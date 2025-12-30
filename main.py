@@ -1,18 +1,17 @@
 import argparse
+import importlib
+import logging
+import sys
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
+from common.logging import configure_logging
 from common.types import RunContext, Trigger
 from runner.runner import Runner
 
 
 def main():
-    context = build_context_from_cli()
-    runner = Runner()
-    runner.run(context)
-
-
-def build_context_from_cli() -> RunContext:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -24,11 +23,51 @@ def build_context_from_cli() -> RunContext:
         default=[],
         help="Workflow arg in key=value form (repeatable)",
     )
+    run_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Execute without persisting state",
+    )
+
+    subparsers.add_parser("list")
 
     args = parser.parse_args()
 
-    if args.command != "run":
-        raise ValueError("Unsupported command")
+    if args.command == "list":
+        list_workflows()
+        return
+
+    context = build_context_from_cli(args)
+    configure_logging(workflow=context.workflow)
+
+    runner = Runner()
+    try:
+        runner.run(context)
+    except Exception:
+        sys.exit(1)
+
+
+def list_workflows():
+    workflows_dir = Path(__file__).parent / "workflows"
+    workflows = []
+
+    for py_file in workflows_dir.glob("*.py"):
+        if py_file.name == "__init__.py" or py_file.name.startswith("_"):
+            continue
+
+        module_name = py_file.stem
+        try:
+            module = importlib.import_module(f"workflows.{module_name}")
+            if callable(getattr(module, "run", None)):
+                workflows.append(module_name)
+        except Exception as e:
+            logging.warning(f"Failed to import workflows.{module_name}: {e}")
+
+    for name in sorted(workflows):
+        print(name)
+
+
+def build_context_from_cli(args) -> RunContext:
 
     # Parse key=value args into dict
     workflow_args = {}
@@ -37,6 +76,8 @@ def build_context_from_cli() -> RunContext:
             raise ValueError(f"Invalid --arg '{item}', expected key=value")
         k, v = item.split("=", 1)
         workflow_args[k] = v
+
+    workflow_args["dry_run"] = args.dry_run
 
     trigger = Trigger(
         type="manual",
