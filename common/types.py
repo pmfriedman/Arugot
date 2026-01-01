@@ -5,7 +5,7 @@ from typing import Literal
 
 @dataclass
 class Trigger:
-    type: Literal["manual", "interval", "once"]
+    type: Literal["manual", "interval", "once", "scheduled"]
     params: dict
 
 

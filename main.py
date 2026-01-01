@@ -9,6 +9,7 @@ from pathlib import Path
 from common.logging import configure_logging
 from common.types import RunContext, Trigger
 from runner.runner import Runner
+from scheduler.scheduler import Scheduler
 
 
 def main():
@@ -30,11 +31,16 @@ def main():
     )
 
     subparsers.add_parser("list")
+    subparsers.add_parser("schedule", help="Run the scheduler daemon")
 
     args = parser.parse_args()
 
     if args.command == "list":
         list_workflows()
+        return
+    
+    if args.command == "schedule":
+        run_scheduler()
         return
 
     context = build_context_from_cli(args)
@@ -65,6 +71,25 @@ def list_workflows():
 
     for name in sorted(workflows):
         print(name)
+
+
+def run_scheduler():
+    """Run the scheduler daemon."""
+    configure_logging(workflow="scheduler")
+    logger = logging.getLogger(__name__)
+    
+    logger.info("Starting scheduler daemon")
+    
+    runner = Runner()
+    scheduler = Scheduler(runner)
+    
+    try:
+        scheduler.run()
+    except KeyboardInterrupt:
+        logger.info("Scheduler interrupted by user")
+    except Exception:
+        logger.exception("Scheduler failed")
+        sys.exit(1)
 
 
 def build_context_from_cli(args) -> RunContext:

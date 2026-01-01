@@ -10,6 +10,9 @@ class Settings(BaseSettings):
 
     fireflies_api_key: str = Field(default="")
 
+    # Scheduler settings
+    scheduler_check_interval: int = Field(default=30)
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
