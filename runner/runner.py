@@ -34,7 +34,7 @@ class Runner:
                     f"Workflow '{context.workflow}' returned non-dict state"
                 )
 
-            if context.args.get("dry_run", False):
+            if context.dry_run:
                 logger.info("Dry-run enabled; state not persisted")
             else:
                 save_state(context.workflow, new_state)

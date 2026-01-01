@@ -57,11 +57,25 @@ def list_workflows():
     workflows_dir = Path(__file__).parent / "workflows"
     workflows = []
 
+    # Check for top-level .py files
     for py_file in workflows_dir.glob("*.py"):
         if py_file.name == "__init__.py" or py_file.name.startswith("_"):
             continue
 
         module_name = py_file.stem
+        try:
+            module = importlib.import_module(f"workflows.{module_name}")
+            if callable(getattr(module, "run", None)):
+                workflows.append(module_name)
+        except Exception as e:
+            logging.warning(f"Failed to import workflows.{module_name}: {e}")
+
+    # Check for subdirectories with workflow modules
+    for subdir in workflows_dir.iterdir():
+        if not subdir.is_dir() or subdir.name.startswith("_"):
+            continue
+
+        module_name = subdir.name
         try:
             module = importlib.import_module(f"workflows.{module_name}")
             if callable(getattr(module, "run", None)):
@@ -102,8 +116,6 @@ def build_context_from_cli(args) -> RunContext:
         k, v = item.split("=", 1)
         workflow_args[k] = v
 
-    workflow_args["dry_run"] = args.dry_run
-
     trigger = Trigger(
         type="manual",
         params={},
@@ -115,6 +127,7 @@ def build_context_from_cli(args) -> RunContext:
         run_id=str(uuid.uuid4()),
         started_at=datetime.now(timezone.utc),
         args=workflow_args,
+        dry_run=args.dry_run,
     )
 
 

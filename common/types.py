@@ -16,3 +16,4 @@ class RunContext:
     run_id: str
     started_at: datetime
     args: dict
+    dry_run: bool = False

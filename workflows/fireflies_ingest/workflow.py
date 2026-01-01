@@ -205,7 +205,7 @@ def run(context: RunContext, state: dict) -> dict:
     successfully_written: list[FirefliesMeeting] = []
     written_count = 0
 
-    if context.args.get("dry_run", False):
+    if context.dry_run:
         logger.info("[DRY-RUN] Skipping file writes")
         for meeting in normalized_meetings:
             # Compute what the path would be
@@ -291,7 +291,7 @@ def run(context: RunContext, state: dict) -> dict:
     )
 
     # Persist state
-    if context.args.get("dry_run", False):
+    if context.dry_run:
         logger.info("[DRY-RUN] State not persisted")
     else:
         if ids_added > 0:

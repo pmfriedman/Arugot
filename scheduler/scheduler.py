@@ -53,6 +53,12 @@ class Scheduler:
             cron_expression="15,45 5-22 * * *",
             timezone="America/New_York"
         )
+        # Meeting extractor: Run every 5 minutes
+        self.register_job(
+            workflow="meeting_extractor",
+            cron_expression="*/5 * * * *",
+            timezone="America/New_York"
+        )
 
     def _setup_signal_handlers(self):
         """Set up graceful shutdown on SIGINT and SIGTERM."""
