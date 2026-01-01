@@ -1,7 +1,7 @@
 """Fireflies meeting ingest workflow."""
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from common.types import RunContext
 from workflows.fireflies_ingest import client
@@ -44,6 +44,35 @@ def normalize_meeting(raw_meeting: dict, transcript_payload: dict) -> FirefliesM
             meeting_ts - duration_seconds, tz=timezone.utc
         )
 
+    # Extract participants from speakers and meeting_attendees
+    participants = []
+
+    # Add speakers (if available)
+    speakers = transcript_payload.get("speakers", [])
+    if speakers:
+        for speaker in speakers:
+            participants.append(
+                {
+                    "name": speaker.get("name"),
+                    "speaker_id": speaker.get("id"),
+                    "source": "speakers",
+                }
+            )
+
+    # Add meeting_attendees (if available)
+    attendees = transcript_payload.get("meeting_attendees", [])
+    if attendees:
+        for attendee in attendees:
+            participants.append(
+                {
+                    "name": attendee.get("displayName") or attendee.get("name"),
+                    "email": attendee.get("email"),
+                    "phone": attendee.get("phoneNumber"),
+                    "location": attendee.get("location"),
+                    "source": "attendees",
+                }
+            )
+
     return FirefliesMeeting(
         meeting_id=transcript_payload["id"],
         title=transcript_payload.get("title"),
@@ -52,19 +81,18 @@ def normalize_meeting(raw_meeting: dict, transcript_payload: dict) -> FirefliesM
         ended_at=ended_at,
         duration_seconds=duration_seconds,
         organizer=None,  # Not provided by current API query
-        participants=[],  # Not provided by current API query
+        participants=participants,
         transcript_sentences=sentences,
         fireflies_summary=transcript_payload.get("summary"),
     )
 
 
 def run(context: RunContext, state: dict) -> dict:
-    """Fetch meetings from Fireflies API with cursor-based deduplication.
+    """Fetch meetings from Fireflies API using 5-day lookback window.
 
     State schema:
         {
-            "processed_ids": [],
-            "last_meeting_ended_at": null
+            "processed_ids": []
         }
 
     No state updates or file writes during dry-run.
@@ -73,15 +101,11 @@ def run(context: RunContext, state: dict) -> dict:
 
     # Load state with defaults
     processed_ids = state.get("processed_ids", [])
-    last_meeting_ended_at = state.get("last_meeting_ended_at")
 
-    # Determine time window
-    since_iso = None
-    if last_meeting_ended_at:
-        since_iso = last_meeting_ended_at
-        logger.info("Using cursor: %s", since_iso)
-    else:
-        logger.info("First run — no cursor found")
+    # Always fetch last 5 days
+    five_days_ago = datetime.now(timezone.utc) - timedelta(days=5)
+    since_iso = five_days_ago.isoformat()
+    logger.info("Fetching meetings since %s (last 5 days)", since_iso)
 
     # Fetch meetings
     meetings = client.list_meetings(since_iso=since_iso)
@@ -120,6 +144,18 @@ def run(context: RunContext, state: dict) -> dict:
 
     for meeting in candidates:
         meeting_id = meeting["id"]
+
+        # Skip if summary isn't processed yet
+        summary_status = meeting.get("meeting_info", {}).get("summary_status")
+        if summary_status != "processed":
+            logger.info(
+                "Skipping meeting %s — summary not processed (status: %s)",
+                meeting_id,
+                summary_status,
+            )
+            transcript_not_ready_count += 1
+            continue
+
         transcript = client.get_transcript(meeting_id)
 
         if transcript is None:
@@ -175,13 +211,13 @@ def run(context: RunContext, state: dict) -> dict:
             # Compute what the path would be
             from pathlib import Path
 
-            date_str = meeting.ended_at.strftime("%Y-%m-%d")
+            datetime_str = meeting.ended_at.strftime("%Y-%m-%d %H%M")
             title_part = meeting.title if meeting.title else "Meeting"
             safe_title = "".join(
                 c if c.isalnum() or c in " -_" else "" for c in title_part
             )
             safe_title = " ".join(safe_title.split())
-            filename = f"{date_str} — {safe_title} — ff_{meeting.meeting_id}.md"
+            filename = f"{datetime_str} — {safe_title} — ff_{meeting.meeting_id}.md"
             from settings import settings
 
             output_path = (
@@ -212,7 +248,6 @@ def run(context: RunContext, state: dict) -> dict:
 
     # Compute new state in-memory
     new_processed_ids = processed_ids.copy()
-    new_last_meeting_ended_at = last_meeting_ended_at
 
     if successfully_written:
         # Add newly written meeting IDs (union)
@@ -220,9 +255,31 @@ def run(context: RunContext, state: dict) -> dict:
             if meeting.meeting_id not in new_processed_ids:
                 new_processed_ids.append(meeting.meeting_id)
 
-        # Advance cursor to max ended_at of successfully written meetings
-        max_ended_at = max(m.ended_at for m in successfully_written)
-        new_last_meeting_ended_at = max_ended_at.isoformat()
+    # Prune old IDs: only keep IDs for meetings within the 25-day retention window
+    # This prevents unbounded growth while providing a buffer beyond the 5-day fetch window
+    twenty_five_days_ago = datetime.now(timezone.utc) - timedelta(days=25)
+
+    # Filter out IDs for meetings older than 25 days based on ended_at timestamp
+    pruned_processed_ids = []
+    for meeting_id in new_processed_ids:
+        # Find the meeting in our current data
+        meeting_data = next((m for m in meetings if m["id"] == meeting_id), None)
+        if meeting_data:
+            meeting_ts = meeting_data["date"] / 1000
+            meeting_date = datetime.fromtimestamp(meeting_ts, tz=timezone.utc)
+            if meeting_date >= twenty_five_days_ago:
+                pruned_processed_ids.append(meeting_id)
+        else:
+            # Keep IDs not in current fetch (they might be from days 6-25)
+            # We'll naturally prune them when they age beyond 25 days
+            pruned_processed_ids.append(meeting_id)
+
+    ids_pruned = len(new_processed_ids) - len(pruned_processed_ids)
+    if ids_pruned > 0:
+        logger.info(
+            "Pruned %d old meeting IDs outside 25-day retention window", ids_pruned
+        )
+        new_processed_ids = pruned_processed_ids
 
     # Log state changes
     ids_added = len(new_processed_ids) - len(processed_ids)
@@ -233,23 +290,13 @@ def run(context: RunContext, state: dict) -> dict:
         ids_added,
     )
 
-    if new_last_meeting_ended_at != last_meeting_ended_at:
-        logger.info(
-            "Cursor advancement: %s → %s",
-            last_meeting_ended_at,
-            new_last_meeting_ended_at,
-        )
-    else:
-        logger.info("Cursor unchanged: %s", last_meeting_ended_at)
-
     # Persist state
     if context.args.get("dry_run", False):
         logger.info("[DRY-RUN] State not persisted")
     else:
-        if ids_added > 0 or new_last_meeting_ended_at != last_meeting_ended_at:
+        if ids_added > 0:
             new_state = {
                 "processed_ids": new_processed_ids,
-                "last_meeting_ended_at": new_last_meeting_ended_at,
             }
             save_state("fireflies_ingest", new_state)
             logger.info("State persisted successfully")
@@ -258,5 +305,4 @@ def run(context: RunContext, state: dict) -> dict:
 
     return {
         "processed_ids": new_processed_ids,
-        "last_meeting_ended_at": new_last_meeting_ended_at,
     }
