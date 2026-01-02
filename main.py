@@ -1,15 +1,18 @@
 import argparse
 import importlib
 import logging
+import subprocess
 import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import quote
 
 from common.logging import configure_logging
 from common.types import RunContext, Trigger
 from runner.runner import Runner
 from scheduler.scheduler import Scheduler
+from settings import settings
 
 
 def main():
@@ -33,6 +36,9 @@ def main():
     subparsers.add_parser("list")
     subparsers.add_parser("schedule", help="Run the scheduler daemon")
 
+    new_parser = subparsers.add_parser("new", help="Create new notes")
+    new_parser.add_argument("note_type", choices=["meeting"], help="Type of note to create")
+
     args = parser.parse_args()
 
     if args.command == "list":
@@ -41,6 +47,10 @@ def main():
     
     if args.command == "schedule":
         run_scheduler()
+        return
+    
+    if args.command == "new":
+        create_new_note(args.note_type)
         return
 
     context = build_context_from_cli(args)
@@ -134,6 +144,66 @@ def build_context_from_cli(args) -> RunContext:
         args=workflow_args,
         dry_run=args.dry_run,
     )
+
+
+def create_new_note(note_type: str):
+    """Create a new note and open it in Obsidian.
+    
+    Args:
+        note_type: Type of note to create (currently only "meeting" supported)
+    """
+    if note_type != "meeting":
+        print(f"Unsupported note type: {note_type}")
+        sys.exit(1)
+    
+    # Validate required settings
+    if not settings.obsidian_vault_dir:
+        print("Error: OBSIDIAN_VAULT_DIR not configured in .env")
+        sys.exit(1)
+    
+    # Create meeting note
+    vault_root = Path(settings.obsidian_vault_dir)
+    vault_name = vault_root.name
+    meetings_dir = vault_root / "_scratch" / "human" / "meetings"
+    meetings_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Generate filename with timestamp
+    now = datetime.now()
+    timestamp_str = now.strftime("%Y-%m-%d %H%M")
+    filename = f"{timestamp_str} — Meeting.md"
+    file_path = meetings_dir / filename
+    
+    # Generate frontmatter with timezone
+    iso_timestamp = now.astimezone().isoformat()
+    content = f"""---
+source: manual
+meeting_date: {iso_timestamp}
+---
+
+
+"""
+    
+    # Write file
+    file_path.write_text(content, encoding="utf-8")
+    print(f"Created: {file_path}")
+    
+    # Open in Obsidian
+    relative_path = file_path.relative_to(vault_root)
+    # Remove .md extension and convert to forward slashes for Obsidian URI
+    note_path = str(relative_path.with_suffix("")).replace("\\", "/")
+    encoded_path = quote(note_path)
+    encoded_vault = quote(vault_name)
+    
+    obsidian_uri = f"obsidian://open?vault={encoded_vault}&file={encoded_path}"
+    
+    try:
+        # Use start command with proper quoting for URIs
+        subprocess.Popen(f'start "" "{obsidian_uri}"', shell=True)
+        print(f"Opening in Obsidian: {note_path}")
+    except Exception as e:
+        print(f"Failed to open in Obsidian: {e}")
+        print(f"URI: {obsidian_uri}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

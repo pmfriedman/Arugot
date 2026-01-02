@@ -76,6 +76,29 @@ List available workflows:
 uv run python main.py list
 ```
 
+### Quick Capture: Creating Meeting Notes
+
+Create a timestamped meeting note and open it in Obsidian:
+```sh
+uv run python main.py new meeting
+```
+
+This command:
+- Creates a file in `_scratch/human/meetings/` with format: `YYYY-MM-DD HHMM — Meeting.md`
+- Populates it with frontmatter template (source, meeting_date)
+- Opens it directly in Obsidian for immediate note-taking
+
+**Zero-friction setup with AutoHotkey:**
+
+Add to your AutoHotkey script:
+```ahk
+^!m::  ; Ctrl+Alt+M
+Run, uv run python main.py new meeting, C:\dev\Arugot
+return
+```
+
+Now press `Ctrl+Alt+M` from anywhere to instantly create and open a meeting note.
+
 ### Running the Scheduler
 
 The scheduler automatically runs workflows based on configured schedules.
