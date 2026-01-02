@@ -47,13 +47,15 @@ function meeting { uv run python main.py new meeting }
 ```
 
 **AutoHotkey (ultimate zero friction):**
+
+Find your `uv.exe` path with: `Get-Command uv | Select-Object -ExpandProperty Source`
+
+Then add to your AutoHotkey v2 script:
 ```ahk
-^!m::  ; Ctrl+Alt+M
-Run, uv run python main.py new meeting, C:\dev\Arugot
-return
+^+m::Run A_ComSpec ' /c "cd /d C:\dev\Arugot && C:\Users\YourUsername\.local\bin\uv.exe run python main.py new meeting"'
 ```
 
-Press `Ctrl+Alt+M` → meeting note created and opened in Obsidian instantly.
+Press `Ctrl+Shift+M` → meeting note created and opened in Obsidian instantly.
 
 ### Future: Outlook Calendar Integration
 

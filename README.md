@@ -90,14 +90,17 @@ This command:
 
 **Zero-friction setup with AutoHotkey:**
 
-Add to your AutoHotkey script:
-```ahk
-^!m::  ; Ctrl+Alt+M
-Run, uv run python main.py new meeting, C:\dev\Arugot
-return
+First, find your `uv.exe` path:
+```powershell
+Get-Command uv | Select-Object -ExpandProperty Source
 ```
 
-Now press `Ctrl+Alt+M` from anywhere to instantly create and open a meeting note.
+Then add to your AutoHotkey v2 script (replace the uv.exe path with yours):
+```ahk
+^+m::Run A_ComSpec ' /c "cd /d C:\dev\Arugot && C:\Users\YourUsername\.local\bin\uv.exe run python main.py new meeting"'
+```
+
+Now press `Ctrl+Shift+M` from anywhere to instantly create and open a meeting note.
 
 ### Running the Scheduler
 
