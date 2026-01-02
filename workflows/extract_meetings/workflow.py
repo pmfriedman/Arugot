@@ -15,6 +15,8 @@ from workflows.extract_meetings.writer import (
     write_meeting_file,
 )
 
+DESCRIPTION = "Create meeting records in _scratch/auto/meetings/ from Fireflies transcripts"
+
 logger = logging.getLogger(__name__)
 
 

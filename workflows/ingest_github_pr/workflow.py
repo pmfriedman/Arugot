@@ -17,6 +17,8 @@ from common.github_client import (
 )
 from workflows.ingest_github_pr import writer
 
+DESCRIPTION = "Fetch GitHub PRs involving the user and write to _ingest/github/"
+
 logger = logging.getLogger(__name__)
 
 

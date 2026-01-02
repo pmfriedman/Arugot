@@ -66,7 +66,8 @@ def list_workflows():
         try:
             module = importlib.import_module(f"workflows.{module_name}")
             if callable(getattr(module, "run", None)):
-                workflows.append(module_name)
+                description = getattr(module, "DESCRIPTION", None)
+                workflows.append((module_name, description))
         except Exception as e:
             logging.warning(f"Failed to import workflows.{module_name}: {e}")
 
@@ -79,12 +80,16 @@ def list_workflows():
         try:
             module = importlib.import_module(f"workflows.{module_name}")
             if callable(getattr(module, "run", None)):
-                workflows.append(module_name)
+                description = getattr(module, "DESCRIPTION", None)
+                workflows.append((module_name, description))
         except Exception as e:
             logging.warning(f"Failed to import workflows.{module_name}: {e}")
 
-    for name in sorted(workflows):
-        print(name)
+    for name, description in sorted(workflows):
+        if description:
+            print(f"{name}: {description}")
+        else:
+            print(f"{name}: (no description)")
 
 
 def run_scheduler():

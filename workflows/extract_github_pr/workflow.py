@@ -16,6 +16,8 @@ from workflows.extract_github_pr.writer import (
     update_stub_state,
 )
 
+DESCRIPTION = "Create PR stubs in _scratch/auto/github/ from ingested GitHub PR data"
+
 logger = logging.getLogger(__name__)
 
 

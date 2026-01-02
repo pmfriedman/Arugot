@@ -9,6 +9,8 @@ from workflows.ingest_fireflies.model import FirefliesMeeting
 from workflows.ingest_fireflies import writer
 from runner.state import save_state
 
+DESCRIPTION = "Fetch meeting transcripts from Fireflies.ai and write to _ingest/fireflies/"
+
 logger = logging.getLogger(__name__)
 
 

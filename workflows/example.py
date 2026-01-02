@@ -1,6 +1,8 @@
 import logging
 from common.types import RunContext
 
+DESCRIPTION = "Example workflow that increments a counter"
+
 logger = logging.getLogger(__name__)
 
 

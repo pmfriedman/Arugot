@@ -41,7 +41,9 @@ This project is a modular Python automation framework for Obsidian vaults. It or
   - Naming: `synth_[purpose]` (e.g., `synth_weekly_review`)
 
 ### Core Conventions
-- **Workflow Contract:** Each workflow must define `async def run(context: RunContext, state: dict) -> dict`. State is a dict, persisted between runs.
+- **Workflow Contract:** Each workflow must define:
+  - `async def run(context: RunContext, state: dict) -> dict` - The workflow entry point. State is a dict, persisted between runs.
+  - `DESCRIPTION` (str) - A concise one-line description shown by the `list` command
 - **Idempotence:** Workflows must be safe to run repeatedly. Use reconciliation patterns (check before create).
 - **State Schema:** State files must be JSON objects with `version` and `data` fields. See `runner/state.py` for validation logic.
 - **Logging:** Use `logging.getLogger(__name__)` and rely on `configure_logging()` for setup. Avoid side effects at import time.
@@ -53,13 +55,15 @@ This project is a modular Python automation framework for Obsidian vaults. It or
 
 This project uses `uv` for Python dependency management and virtual environment handling.  When running Python commands programmatically always use `uv run` prefix.
 
+- **List workflows:** Get a comprehensive list of all available workflows with descriptions
+  ```sh
+  uv run python main.py list
+  ```
+  Use this command when you need to discover what workflows exist and what they do.
+
 - **Run a workflow:**
   ```sh
   uv run python main.py run <workflow> [--arg key=value ...] [--dry-run]
-  ```
-- **List workflows:**
-  ```sh
-  uv run python main.py list
   ```
 - **Run scheduler:**
   ```sh
