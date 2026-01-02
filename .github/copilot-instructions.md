@@ -1,7 +1,7 @@
-# Copilot Instructions for productivity
+# Copilot Instructions for Arugot
 
 ## Overview
-This project is a modular Python automation framework for running and managing workflows, with a focus on stateful, repeatable data processing. It is structured for extensibility and robust logging/state management.
+This project is a modular Python automation framework for Obsidian vaults. It orchestrates workflows that ingest external data, surface actionable items, and enrich your personal knowledge base through scheduled, idempotent processing. The vault is organized into three layers: `_ingest/` (raw data), `_scratch/` (work-in-progress), and root-level notes (curated content).
 
 ## Development Workflow
 
@@ -15,8 +15,9 @@ This project is a modular Python automation framework for running and managing w
 
 
 ## Architecture
-- **Entrypoint:** `main.py` parses CLI commands (`run`, `list`) and dispatches to the workflow runner.
-- **Workflows:** Located in `workflows/`, each workflow is a Python module with a `run(context, state)` function. Example: `workflows/example.py`, `workflows/fireflies_ingest/workflow.py`.
+- **Entrypoint:** `main.py` parses CLI commands (`run`, `list`, `schedule`) and dispatches to the workflow runner or scheduler.
+- **Workflows:** Located in `workflows/`, each workflow is a Python module with an `async def run(context, state)` function. Examples: `workflows/example.py`, `workflows/fireflies_ingest/workflow.py`.
+- **Scheduler:** `scheduler/scheduler.py` runs workflows on cron schedules with timezone support.
 - **State Management:** Workflow state is persisted as JSON in `{runtime_root}/state/{workflow}.json` via `runner/state.py`.
 - **Logging:** Centralized in `common/logging.py`, logs to both console and files under `{runtime_root}/logs/`.
 - **Settings:** All configuration is via environment variables or `.env`, loaded by `settings.py` using `pydantic-settings`.
@@ -24,13 +25,29 @@ This project is a modular Python automation framework for running and managing w
 - **Workflow Example:** The `fireflies_ingest` workflow demonstrates API integration, normalization, and writing to an Obsidian vault.
 
 ## Key Patterns & Conventions
-- **Workflow Contract:** Each workflow must define `run(context: RunContext, state: dict) -> dict`. State is a dict, persisted between runs.
+
+### Vault Organization
+- **`_ingest/`** - Raw data from external systems (APIs, tools, files)
+- **`_scratch/auto/`** - Machine workspace for work-in-progress
+- **`_scratch/human/`** - Human workspace for notes, todos, drafts
+- **Root-level notes** - Curated content, source of truth
+
+### Workflow Types
+- **Ingest workflows** - Fetch from external sources → write to `_ingest/`
+  - Naming: `ingest_[source]` (e.g., `ingest_fireflies`, `ingest_github`)
+- **Extractor workflows** - Surface raw data from `_ingest/` → create records in `_scratch/auto/`
+  - Naming: `extract_[domain]` (e.g., `extract_meetings`, `extract_github_pr`)
+- **Synth workflows** - Analyze `_scratch/` and existing notes → propose changes to enrich curated content
+  - Naming: `synth_[purpose]` (e.g., `synth_weekly_review`)
+
+### Core Conventions
+- **Workflow Contract:** Each workflow must define `async def run(context: RunContext, state: dict) -> dict`. State is a dict, persisted between runs.
+- **Idempotence:** Workflows must be safe to run repeatedly. Use reconciliation patterns (check before create).
 - **State Schema:** State files must be JSON objects with `version` and `data` fields. See `runner/state.py` for validation logic.
 - **Logging:** Use `logging.getLogger(__name__)` and rely on `configure_logging()` for setup. Avoid side effects at import time.
 - **Settings Access:** Use `from settings import settings` for all config. Do not hardcode paths or secrets.
-- **Obsidian Integration:** For workflows writing to Obsidian, use `settings.obsidian_vault_dir` and write to `_ingest/` subfolders.
+- **Type Safety:** Use pydantic models or dataclasses for data structures. Apply type hints consistently throughout.
 - Prefer composition over complex abstractions
-- Use type hints consistently
 
 ## Developer Workflows
 
@@ -43,6 +60,10 @@ This project uses `uv` for Python dependency management and virtual environment 
 - **List workflows:**
   ```sh
   uv run python main.py list
+  ```
+- **Run scheduler:**
+  ```sh
+  uv run python main.py schedule
   ```
 
 

@@ -30,11 +30,13 @@ class Runner:
         try:
             run_func = workflow_module.run
             
-            # Check if workflow is async and handle accordingly
-            if asyncio.iscoroutinefunction(run_func):
-                new_state = asyncio.run(run_func(context, state))
-            else:
-                new_state = run_func(context, state)
+            # All workflows must be async
+            if not asyncio.iscoroutinefunction(run_func):
+                raise RuntimeError(
+                    f"Workflow '{context.workflow}' must define async def run()"
+                )
+            
+            new_state = asyncio.run(run_func(context, state))
 
             if not isinstance(new_state, dict):
                 raise RuntimeError(

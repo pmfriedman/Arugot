@@ -1,6 +1,6 @@
-# Productivity Automation Framework
+# Arugot
 
-A modular Python automation framework for running and managing workflows, with built-in scheduling and state management.
+A modular Python automation framework for Obsidian vaults. Orchestrates workflows that ingest external data, surface actionable items, and enrich your personal knowledge base through scheduled, idempotent processing.
 
 ## Features
 
@@ -10,6 +10,25 @@ A modular Python automation framework for running and managing workflows, with b
 - **Robust Logging**: Centralized logging to console and files
 - **Environment Configuration**: All settings via `.env` file
 - **Windows Startup Integration**: Auto-start scheduler on system boot
+
+## Vault Organization
+
+The Obsidian vault is organized into three layers:
+
+- **`_ingest/`** - Raw data from external systems (APIs, tools, files)
+- **`_scratch/`** - Scratchpad for work-in-progress: `auto/` (machine workspace) and `human/` (human workspace for notes, todos, drafts)
+- **Root-level notes** - Your source of truth, organized however you like (AI-powered search reduces need for strict folder hierarchies)
+
+## Workflow Philosophy
+
+Workflows are organized by layer transitions:
+
+- **Ingest workflows** - Fetch from external sources (APIs, files, tools) → write to `_ingest/`
+  - Naming: `ingest_[source]` (e.g., `ingest_fireflies`, `ingest_github`)
+- **Extractor workflows** - Surface raw data from `_ingest/` → create records in `_scratch/auto/` for further processing
+  - Naming: `extract_[domain]` (e.g., `extract_meetings`, `extract_github_pr`)
+- **Synth workflows** - Analyze `_scratch/` and existing notes → propose changes to enrich curated content
+  - Naming: `synth_[purpose]` (e.g., `synth_weekly_review`)
 
 ## Quick Start
 

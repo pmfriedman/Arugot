@@ -1,7 +1,7 @@
 """Meeting Extractor Workflow Implementation
 
 Reconciles meeting transcripts in _ingest/fireflies/ with meeting records in
-_working/auto/meetings/, ensuring every transcript has exactly one record.
+_scratch/auto/meetings/, ensuring every transcript has exactly one record.
 """
 
 import logging
@@ -40,7 +40,7 @@ async def run(context: RunContext, state: dict) -> dict:
     # Get directories from settings
     vault_root = Path(settings.obsidian_vault_dir)
     ingest_dir = vault_root / "_ingest/fireflies"
-    working_dir = vault_root / "_working/auto/meetings"
+    working_dir = vault_root / "_scratch/auto/meetings"
 
     logger.info("Vault root: %s", vault_root)
 
@@ -61,7 +61,7 @@ def meeting_record_exists(meeting_id: str, working_dir: Path) -> bool:
 
     Args:
         meeting_id: Meeting ID to check
-        working_dir: Path to _working/auto/meetings/ directory
+        working_dir: Path to _scratch/auto/meetings/ directory
 
     Returns:
         True if meeting record file exists, False otherwise
@@ -82,7 +82,7 @@ def reconcile_meetings(
 
     Args:
         ingest_dir: Path to _ingest/fireflies/ directory
-        working_dir: Path to _working/auto/meetings/ directory
+        working_dir: Path to _scratch/auto/meetings/ directory
         vault_root: Path to Obsidian vault root (for relative path computation)
         context: Runtime context including dry_run flag
 

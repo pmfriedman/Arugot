@@ -1,6 +1,6 @@
 """PR stub file writer.
 
-Creates minimal stub files in _working/auto/github/ that link back to _ingest.
+Creates minimal stub files in _scratch/auto/github/ that link back to _ingest.
 """
 
 import logging
@@ -79,7 +79,7 @@ def write_pr_stub(
 
     Args:
         stub: PRStub to write
-        output_dir: Directory to write the stub file (_working/auto/github/)
+        output_dir: Directory to write the stub file (_scratch/auto/github/)
         context: Runtime context including dry_run flag
 
     Returns:

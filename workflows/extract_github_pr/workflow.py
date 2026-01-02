@@ -1,6 +1,6 @@
 """Extract GitHub PR Workflow Implementation.
 
-Reconciles PR data in _ingest/github/ with stub records in _working/auto/github/,
+Reconciles PR data in _ingest/github/ with stub records in _scratch/auto/github/,
 ensuring every active PR has exactly one stub for downstream processing.
 """
 
@@ -40,7 +40,7 @@ async def run(context: RunContext, state: dict) -> dict:
     # Get directories from settings
     vault_root = Path(settings.obsidian_vault_dir)
     ingest_dir = vault_root / "_ingest/github"
-    working_dir = vault_root / "_working/auto/github"
+    working_dir = vault_root / "_scratch/auto/github"
 
     logger.info("Vault root: %s", vault_root)
 
@@ -125,7 +125,7 @@ def stub_exists(pr_number: int, repo_owner: str, repo_name: str, working_dir: Pa
         pr_number: PR number
         repo_owner: Repository owner
         repo_name: Repository name
-        working_dir: Path to _working/auto/github/ directory
+        working_dir: Path to _scratch/auto/github/ directory
 
     Returns:
         True if PR stub file exists, False otherwise
@@ -174,7 +174,7 @@ def reconcile_prs(
 
     Args:
         ingest_dir: Path to _ingest/github/ directory
-        working_dir: Path to _working/auto/github/ directory
+        working_dir: Path to _scratch/auto/github/ directory
         vault_root: Path to Obsidian vault root (for relative path computation)
         context: Runtime context including dry_run flag
 

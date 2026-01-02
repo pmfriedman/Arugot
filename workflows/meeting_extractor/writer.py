@@ -1,6 +1,6 @@
 """Meeting Record File Writer
 
-Creates well-formed meeting record files in _working/auto/meetings/.
+Creates well-formed meeting record files in _scratch/auto/meetings/.
 """
 
 import logging
@@ -66,7 +66,7 @@ def write_meeting_file(
 
     Args:
         record: MeetingRecord to write
-        output_dir: Directory to write the meeting file (_working/auto/meetings/)
+        output_dir: Directory to write the meeting file (_scratch/auto/meetings/)
         context: Runtime context including dry_run flag
 
     Returns:
