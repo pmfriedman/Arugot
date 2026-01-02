@@ -10,7 +10,7 @@ import re
 
 from common.types import RunContext
 from settings import settings
-from workflows.meeting_extractor.writer import (
+from workflows.extract_meetings.writer import (
     generate_meeting_record,
     write_meeting_file,
 )

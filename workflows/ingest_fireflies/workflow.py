@@ -4,9 +4,9 @@ import logging
 from datetime import datetime, timezone, timedelta
 
 from common.types import RunContext
-from workflows.fireflies_ingest import client
-from workflows.fireflies_ingest.model import FirefliesMeeting
-from workflows.fireflies_ingest import writer
+from workflows.ingest_fireflies import client
+from workflows.ingest_fireflies.model import FirefliesMeeting
+from workflows.ingest_fireflies import writer
 from runner.state import save_state
 
 logger = logging.getLogger(__name__)
@@ -298,7 +298,7 @@ async def run(context: RunContext, state: dict) -> dict:
             new_state = {
                 "processed_ids": new_processed_ids,
             }
-            save_state("fireflies_ingest", new_state)
+            save_state("ingest_fireflies", new_state)
             logger.info("State persisted successfully")
         else:
             logger.info("No state changes to persist")

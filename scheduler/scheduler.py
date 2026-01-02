@@ -49,13 +49,13 @@ class Scheduler:
         """Register default hardcoded schedules for workflows."""
         # Fireflies ingest: Run at :15 and :45 past each hour from 5 AM to 10 PM
         self.register_job(
-            workflow="fireflies_ingest",
+            workflow="ingest_fireflies",
             cron_expression="15,45 5-22 * * *",
             timezone="America/New_York"
         )
         # Meeting extractor: Run every 5 minutes
         self.register_job(
-            workflow="meeting_extractor",
+            workflow="extract_meetings",
             cron_expression="*/5 * * * *",
             timezone="America/New_York"
         )

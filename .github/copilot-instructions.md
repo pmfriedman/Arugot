@@ -16,13 +16,13 @@ This project is a modular Python automation framework for Obsidian vaults. It or
 
 ## Architecture
 - **Entrypoint:** `main.py` parses CLI commands (`run`, `list`, `schedule`) and dispatches to the workflow runner or scheduler.
-- **Workflows:** Located in `workflows/`, each workflow is a Python module with an `async def run(context, state)` function. Examples: `workflows/example.py`, `workflows/fireflies_ingest/workflow.py`.
+- **Workflows:** Located in `workflows/`, each workflow is a Python module with an `async def run(context, state)` function. Examples: `workflows/example.py`, `workflows/ingest_fireflies/workflow.py`.
 - **Scheduler:** `scheduler/scheduler.py` runs workflows on cron schedules with timezone support.
 - **State Management:** Workflow state is persisted as JSON in `{runtime_root}/state/{workflow}.json` via `runner/state.py`.
 - **Logging:** Centralized in `common/logging.py`, logs to both console and files under `{runtime_root}/logs/`.
 - **Settings:** All configuration is via environment variables or `.env`, loaded by `settings.py` using `pydantic-settings`.
 - **Types:** Shared data structures (e.g., `RunContext`, `Trigger`) are in `common/types.py`.
-- **Workflow Example:** The `fireflies_ingest` workflow demonstrates API integration, normalization, and writing to an Obsidian vault.
+- **Workflow Example:** The `ingest_fireflies` workflow demonstrates API integration, normalization, and writing to an Obsidian vault.
 
 ## Key Patterns & Conventions
 
@@ -34,7 +34,7 @@ This project is a modular Python automation framework for Obsidian vaults. It or
 
 ### Workflow Types
 - **Ingest workflows** - Fetch from external sources → write to `_ingest/`
-  - Naming: `ingest_[source]` (e.g., `ingest_fireflies`, `ingest_github`)
+  - Naming: `ingest_[source]` (e.g., `ingest_fireflies`, `ingest_github_pr`)
 - **Extractor workflows** - Surface raw data from `_ingest/` → create records in `_scratch/auto/`
   - Naming: `extract_[domain]` (e.g., `extract_meetings`, `extract_github_pr`)
 - **Synth workflows** - Analyze `_scratch/` and existing notes → propose changes to enrich curated content

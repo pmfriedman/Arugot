@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from settings import settings
-from workflows.fireflies_ingest.model import FirefliesMeeting
+from workflows.ingest_fireflies.model import FirefliesMeeting
 
 logger = logging.getLogger(__name__)
 

@@ -24,7 +24,7 @@ The Obsidian vault is organized into three layers:
 Workflows are organized by layer transitions:
 
 - **Ingest workflows** - Fetch from external sources (APIs, files, tools) → write to `_ingest/`
-  - Naming: `ingest_[source]` (e.g., `ingest_fireflies`, `ingest_github`)
+  - Naming: `ingest_[source]` (e.g., `ingest_fireflies`, `ingest_github_pr`)
 - **Extractor workflows** - Surface raw data from `_ingest/` → create records in `_scratch/auto/` for further processing
   - Naming: `extract_[domain]` (e.g., `extract_meetings`, `extract_github_pr`)
 - **Synth workflows** - Analyze `_scratch/` and existing notes → propose changes to enrich curated content
@@ -68,7 +68,7 @@ uv run python main.py run <workflow_name> [--arg key=value ...] [--dry-run]
 
 Example:
 ```sh
-uv run python main.py run fireflies_ingest
+uv run python main.py run ingest_fireflies
 ```
 
 List available workflows:

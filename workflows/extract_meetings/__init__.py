@@ -6,6 +6,6 @@ meeting transcript has exactly one corresponding machine-owned working document.
 Operates as a filesystem reconciler — no LLM analysis, just structural creation.
 """
 
-from workflows.meeting_extractor.workflow import run
+from workflows.extract_meetings.workflow import run
 
 __all__ = ["run"]

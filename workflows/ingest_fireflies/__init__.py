@@ -1,5 +1,5 @@
 """Fireflies meeting ingest workflow."""
 
-from workflows.fireflies_ingest.workflow import run
+from workflows.ingest_fireflies.workflow import run
 
 __all__ = ["run"]

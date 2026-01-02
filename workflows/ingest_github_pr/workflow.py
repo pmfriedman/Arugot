@@ -15,7 +15,7 @@ from common.github_client import (
     is_stale_review,
     is_ignored_pr,
 )
-from workflows.github_ingest import writer
+from workflows.ingest_github_pr import writer
 
 logger = logging.getLogger(__name__)
 

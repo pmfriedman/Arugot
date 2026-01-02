@@ -1,6 +1,6 @@
 """GitHub PR ingest workflow."""
 
 
-from workflows.github_ingest.workflow import run
+from workflows.ingest_github_pr.workflow import run
 
 __all__ = ["run"]
