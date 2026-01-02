@@ -3,7 +3,7 @@
 import logging
 from datetime import datetime, timezone
 
-import requests
+import httpx
 
 from settings import settings
 
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 FIREFLIES_API_URL = "https://api.fireflies.ai/graphql"
 
 
-def list_meetings(since_iso: str | None = None) -> list[dict]:
+async def list_meetings(since_iso: str | None = None) -> list[dict]:
     """Fetch meetings from Fireflies API with server-side filtering and pagination.
 
     Args:
@@ -45,41 +45,42 @@ def list_meetings(since_iso: str | None = None) -> list[dict]:
     limit = 50  # Maximum allowed by API
 
     try:
-        while True:
-            variables: dict[str, int | str] = {
-                "limit": limit,
-                "skip": skip,
-            }
+        async with httpx.AsyncClient() as client:
+            while True:
+                variables: dict[str, int | str] = {
+                    "limit": limit,
+                    "skip": skip,
+                }
 
-            if since_iso:
-                variables["fromDate"] = since_iso
+                if since_iso:
+                    variables["fromDate"] = since_iso
 
-            response = requests.post(
-                FIREFLIES_API_URL,
-                json={"query": query, "variables": variables},
-                headers=headers,
-                timeout=30,
-            )
-            response.raise_for_status()
-            data = response.json()
+                response = await client.post(
+                    FIREFLIES_API_URL,
+                    json={"query": query, "variables": variables},
+                    headers=headers,
+                    timeout=30,
+                )
+                response.raise_for_status()
+                data = response.json()
 
-            if "errors" in data:
-                logger.error("Fireflies API returned errors: %s", data["errors"])
-                break
+                if "errors" in data:
+                    logger.error("Fireflies API returned errors: %s", data["errors"])
+                    break
 
-            meetings = data.get("data", {}).get("transcripts", [])
+                meetings = data.get("data", {}).get("transcripts", [])
 
-            if not meetings:
-                break  # No more meetings to fetch
+                if not meetings:
+                    break  # No more meetings to fetch
 
-            all_meetings.extend(meetings)
-            logger.info("Fetched batch: %d meetings (skip=%d)", len(meetings), skip)
+                all_meetings.extend(meetings)
+                logger.info("Fetched batch: %d meetings (skip=%d)", len(meetings), skip)
 
-            # If we got fewer than limit, we've reached the end
-            if len(meetings) < limit:
-                break
+                # If we got fewer than limit, we've reached the end
+                if len(meetings) < limit:
+                    break
 
-            skip += limit
+                skip += limit
 
         # Log summary
         logger.info("Fetched %d total meetings from Fireflies API", len(all_meetings))
@@ -96,12 +97,12 @@ def list_meetings(since_iso: str | None = None) -> list[dict]:
 
         return all_meetings
 
-    except requests.RequestException as e:
+    except httpx.HTTPError as e:
         logger.error("Failed to fetch meetings from Fireflies: %s", e)
         return []
 
 
-def get_transcript(meeting_id: str) -> dict | None:
+async def get_transcript(meeting_id: str) -> dict | None:
     """Fetch full transcript and AI summary for a meeting.
 
     Args:
@@ -156,39 +157,40 @@ def get_transcript(meeting_id: str) -> dict | None:
     }
 
     try:
-        response = requests.post(
-            FIREFLIES_API_URL,
-            json={"query": query, "variables": {"transcriptId": meeting_id}},
-            headers=headers,
-            timeout=30,
-        )
-        response.raise_for_status()
-        data = response.json()
-
-        if "errors" in data:
-            logger.warning(
-                "Fireflies API errors for meeting %s: %s", meeting_id, data["errors"]
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                FIREFLIES_API_URL,
+                json={"query": query, "variables": {"transcriptId": meeting_id}},
+                headers=headers,
+                timeout=30,
             )
-            return None
+            response.raise_for_status()
+            data = response.json()
 
-        transcript_data = data.get("data", {}).get("transcript")
-        if not transcript_data:
-            return None
-
-        # Check if transcript has content
-        sentences = transcript_data.get("sentences", [])
-        if not sentences:
-            return None
-
-        # Convert sentence timestamps to UTC datetimes if present
-        for sentence in sentences:
-            if "start_time" in sentence and sentence["start_time"] is not None:
-                sentence["start_time_utc"] = datetime.fromtimestamp(
-                    sentence["start_time"], tz=timezone.utc
+            if "errors" in data:
+                logger.warning(
+                    "Fireflies API errors for meeting %s: %s", meeting_id, data["errors"]
                 )
+                return None
 
-        return transcript_data
+            transcript_data = data.get("data", {}).get("transcript")
+            if not transcript_data:
+                return None
 
-    except requests.RequestException as e:
+            # Check if transcript has content
+            sentences = transcript_data.get("sentences", [])
+            if not sentences:
+                return None
+
+            # Convert sentence timestamps to UTC datetimes if present
+            for sentence in sentences:
+                if "start_time" in sentence and sentence["start_time"] is not None:
+                    sentence["start_time_utc"] = datetime.fromtimestamp(
+                        sentence["start_time"], tz=timezone.utc
+                    )
+
+            return transcript_data
+
+    except httpx.HTTPError as e:
         logger.warning("Failed to fetch transcript for meeting %s: %s", meeting_id, e)
         return None

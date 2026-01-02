@@ -13,6 +13,14 @@ class Settings(BaseSettings):
     # Scheduler settings
     scheduler_check_interval: int = Field(default=30)
 
+    # LangSmith configuration
+    langchain_tracing_v2: bool = Field(default=False, alias="LANGCHAIN_TRACING_V2")
+    langchain_api_key: str = Field(default="", alias="LANGCHAIN_API_KEY")
+    langchain_project: str = Field(default="arugot", alias="LANGCHAIN_PROJECT")
+
+    # GitHub configuration
+    github_token: str = Field(default="", alias="GITHUB_TOKEN")
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

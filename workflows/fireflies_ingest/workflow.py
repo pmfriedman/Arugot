@@ -87,7 +87,7 @@ def normalize_meeting(raw_meeting: dict, transcript_payload: dict) -> FirefliesM
     )
 
 
-def run(context: RunContext, state: dict) -> dict:
+async def run(context: RunContext, state: dict) -> dict:
     """Fetch meetings from Fireflies API using 5-day lookback window.
 
     State schema:
@@ -108,7 +108,7 @@ def run(context: RunContext, state: dict) -> dict:
     logger.info("Fetching meetings since %s (last 5 days)", since_iso)
 
     # Fetch meetings
-    meetings = client.list_meetings(since_iso=since_iso)
+    meetings = await client.list_meetings(since_iso=since_iso)
     logger.info("Fetched %d meetings", len(meetings))
 
     # Convert dates to UTC datetimes and sort
@@ -156,7 +156,7 @@ def run(context: RunContext, state: dict) -> dict:
             transcript_not_ready_count += 1
             continue
 
-        transcript = client.get_transcript(meeting_id)
+        transcript = await client.get_transcript(meeting_id)
 
         if transcript is None:
             logger.info("Skipping meeting %s — transcript not ready", meeting_id)

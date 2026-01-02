@@ -18,7 +18,7 @@ from workflows.meeting_extractor.writer import (
 logger = logging.getLogger(__name__)
 
 
-def run(context: RunContext, state: dict) -> dict:
+async def run(context: RunContext, state: dict) -> dict:
     """Execute the meeting extractor workflow.
 
     Scans for meeting transcripts in the ingest directory and creates

@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 import logging
 
@@ -27,7 +28,13 @@ class Runner:
         logger.info("Loaded state: %s", state)
 
         try:
-            new_state = workflow_module.run(context, state)
+            run_func = workflow_module.run
+            
+            # Check if workflow is async and handle accordingly
+            if asyncio.iscoroutinefunction(run_func):
+                new_state = asyncio.run(run_func(context, state))
+            else:
+                new_state = run_func(context, state)
 
             if not isinstance(new_state, dict):
                 raise RuntimeError(

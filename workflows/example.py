@@ -4,7 +4,7 @@ from common.types import RunContext
 logger = logging.getLogger(__name__)
 
 
-def run(context: RunContext, state: dict) -> dict:
+async def run(context: RunContext, state: dict) -> dict:
     count = state.get("count", 0)
     logger.info("Current count: %s", count)
 
