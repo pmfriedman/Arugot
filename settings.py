@@ -20,6 +20,7 @@ class Settings(BaseSettings):
 
     # GitHub configuration
     github_token: str = Field(default="", alias="GITHUB_TOKEN")
+    github_username: str = Field(default="", alias="GITHUB_USERNAME")
 
     model_config = SettingsConfigDict(
         env_file=".env",
