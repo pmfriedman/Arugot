@@ -10,6 +10,10 @@ from common.github_client import (
     fetch_pr_data,
     build_pr_timeline,
     parse_pr_url,
+    get_last_actor,
+    get_last_event_time,
+    is_stale_review,
+    is_ignored_pr,
 )
 from workflows.github_ingest import writer
 
@@ -63,6 +67,11 @@ async def run(context: RunContext, state: dict) -> dict:
             # Determine user's role
             my_role = _determine_role(pr, timeline, my_username)
             
+            # Compute action signals
+            action_signals = await _compute_action_signals(
+                pr, timeline, owner, repo, pr_number, my_username
+            )
+            
             if context.dry_run:
                 # Just log what would be written
                 created_date = pr.created_at.replace('Z', '+00:00')
@@ -79,6 +88,7 @@ async def run(context: RunContext, state: dict) -> dict:
                     my_username=my_username,
                     my_role=my_role,
                     timeline=timeline,
+                    action_signals=action_signals,
                     output_dir=output_dir,
                     active=True
                 )
@@ -96,6 +106,48 @@ async def run(context: RunContext, state: dict) -> dict:
     
     logger.info(f"GitHub ingest complete. Processed {len(current_pr_files)} active PRs")
     return state
+
+
+async def _compute_action_signals(
+    pr, timeline: list, owner: str, repo: str, pr_number: int, my_username: str
+) -> dict:
+    """Compute action signals for a PR.
+    
+    Args:
+        pr: GitHub PR data
+        timeline: List of PR events
+        owner: Repository owner
+        repo: Repository name
+        pr_number: PR number
+        my_username: Current user's GitHub username
+    
+    Returns:
+        Dict with action_type, last_actor, last_event_at
+    """
+    author = pr.user.login
+    last_event = get_last_event_time(timeline)
+    last_actor = get_last_actor(timeline)
+    action_type = "none"
+    
+    # Check 1: Stale review (user reviewed, author updated after)
+    if await is_stale_review(owner, repo, pr_number, my_username):
+        action_type = "stale_review"
+    
+    # Check 2: Ignored PR (user authored, no response in 24h)
+    elif author == my_username:
+        if await is_ignored_pr(owner, repo, pr_number, author, hours=24):
+            action_type = "ignored_pr"
+    
+    # Check 3: Ball in your court (user authored, last actor is someone else)
+    elif author == my_username:
+        if last_actor and last_actor != my_username:
+            action_type = "ball_in_your_court"
+    
+    return {
+        "action_type": action_type,
+        "last_actor": last_actor,
+        "last_event_at": last_event.isoformat() if last_event else None,
+    }
 
 
 def _determine_role(pr, timeline: list, my_username: str) -> str:

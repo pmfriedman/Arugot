@@ -14,6 +14,7 @@ def format_pr_markdown(
     my_username: str,
     my_role: str,
     timeline: list[PREvent],
+    action_signals: dict,
     active: bool = True
 ) -> str:
     """Format PR data as markdown with YAML frontmatter.
@@ -23,6 +24,7 @@ def format_pr_markdown(
         my_username: Current user's GitHub username
         my_role: "author", "reviewer", or "both"
         timeline: Sorted list of PR events
+        action_signals: Dict with action_type, last_actor, last_event_at
         active: Whether PR is currently active/open
     
     Returns:
@@ -43,6 +45,11 @@ updated_at: "{pr.updated_at}"
 
 my_role: {my_role}
 my_username: {my_username}
+
+# Action signals
+action_type: {action_signals['action_type']}
+last_actor: {action_signals['last_actor'] or 'null'}
+last_event_at: "{action_signals['last_event_at']}"
 
 active: {str(active).lower()}
 ---
@@ -114,6 +121,7 @@ def write_pr_file(
     my_username: str,
     my_role: str,
     timeline: list[PREvent],
+    action_signals: dict,
     output_dir: Path,
     active: bool = True
 ) -> Path:
@@ -124,6 +132,7 @@ def write_pr_file(
         my_username: Current user's GitHub username
         my_role: "author", "reviewer", or "both"
         timeline: Sorted list of PR events
+        action_signals: Dict with action_type, last_actor, last_event_at
         output_dir: Directory to write files to (e.g., workspace/_ingest/github)
         active: Whether PR is currently active/open
     
@@ -144,7 +153,7 @@ def write_pr_file(
     filepath = output_dir / filename
     
     # Generate markdown content
-    content = format_pr_markdown(pr, my_username, my_role, timeline, active)
+    content = format_pr_markdown(pr, my_username, my_role, timeline, action_signals, active)
     
     # Write file
     output_dir.mkdir(parents=True, exist_ok=True)
