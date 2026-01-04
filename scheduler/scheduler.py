@@ -22,6 +22,9 @@ from settings import settings
 
 logger = logging.getLogger(__name__)
 
+# Hardcoded timezone for all scheduled jobs
+SCHEDULER_TIMEZONE = "America/New_York"
+
 
 @dataclass
 class SchedulerConfig:
@@ -46,19 +49,19 @@ class Scheduler:
         logger.info("Scheduler initialized")
     
     def _register_default_jobs(self):
-        """Register default hardcoded schedules for workflows."""
-        # Fireflies ingest: Run at :15 and :45 past each hour from 5 AM to 10 PM
-        self.register_job(
-            workflow="fireflies",
-            cron_expression="15,45 5-22 * * *",
-            timezone="America/New_York"
-        )
-        # Meeting extractor: Run every 5 minutes
-        self.register_job(
-            workflow="extract_meetings",
-            cron_expression="*/5 * * * *",
-            timezone="America/New_York"
-        )
+        """Register schedules from settings."""
+        if settings.scheduler_jobs:
+            # Load from configuration
+            logger.info(f"Registering {len(settings.scheduler_jobs)} scheduled jobs (timezone: {SCHEDULER_TIMEZONE}):")
+            for workflow, config in settings.scheduler_jobs.items():
+                self.register_job(
+                    workflow=workflow,
+                    cron_expression=config["cron"],
+                    timezone=SCHEDULER_TIMEZONE
+                )
+                logger.info(f"  - {workflow}: {config['cron']}")
+        else:
+            logger.info("No scheduler configuration found, no jobs will run")
 
     def _setup_signal_handlers(self):
         """Set up graceful shutdown on SIGINT and SIGTERM."""

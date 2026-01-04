@@ -51,24 +51,24 @@ if (-not $RuntimeRoot) {
 
 Write-StartupLog "Runtime Root: $RuntimeRoot"
 
-# Check for existing scheduler process
+# Check for existing scheduler process and stop it if running
 $PidFile = Join-Path $RuntimeRoot "scheduler.pid"
-if (Test-Path $PidFile) {
-    Write-StartupLog "WARNING: PID file exists at $PidFile"
-    Write-StartupLog "Checking if scheduler is already running..."
-    
-    # Get scheduler processes
-    $SchedulerProcesses = Get-Process -Name "python" -ErrorAction SilentlyContinue | 
-        Where-Object { $_.CommandLine -like "*main.py*schedule*" }
-    
-    if ($SchedulerProcesses) {
-        Write-StartupLog "ERROR: Scheduler is already running (PID: $($SchedulerProcesses.Id -join ', '))"
-        Write-StartupLog "If this is incorrect, delete the PID file and try again: $PidFile"
-        exit 1
-    } else {
-        Write-StartupLog "No running scheduler found, removing stale PID file"
-        Remove-Item $PidFile -Force
+$SchedulerProcesses = Get-Process -Name "python" -ErrorAction SilentlyContinue | 
+    Where-Object { $_.CommandLine -like "*main.py*schedule*" }
+
+if ($SchedulerProcesses) {
+    Write-StartupLog "Found existing scheduler process, stopping it..."
+    $SchedulerProcesses | ForEach-Object {
+        Write-StartupLog "Stopping scheduler process (PID: $($_.Id))"
+        Stop-Process -Id $_.Id -Force
     }
+    Write-StartupLog "Existing scheduler stopped"
+    Start-Sleep -Seconds 2  # Wait for clean shutdown
+}
+
+if (Test-Path $PidFile) {
+    Write-StartupLog "Removing PID file"
+    Remove-Item $PidFile -Force
 }
 
 # Main scheduler loop with restart capability

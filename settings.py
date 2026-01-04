@@ -12,6 +12,7 @@ class Settings(BaseSettings):
 
     # Scheduler settings
     scheduler_check_interval: int = Field(default=30)
+    scheduler_jobs: dict = Field(default_factory=dict)  # JSON: {"workflow": {"cron": "..."}}
 
     # LangSmith configuration
     langchain_tracing_v2: bool = Field(default=False, alias="LANGCHAIN_TRACING_V2")
