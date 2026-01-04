@@ -25,9 +25,22 @@ def create_notification(
     Returns:
         Path to the created notification file
     """
-    vault_dir = Path(settings.OBSIDIAN_VAULT_DIR)
+    vault_dir = Path(settings.obsidian_vault_dir)
     inbox_dir = vault_dir / "_inbox"
     inbox_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Convert source_path to vault-relative path for wikilink
+    source_path_obj = Path(source_path)
+    if source_path_obj.is_absolute():
+        try:
+            # Make it relative to vault
+            relative_source = source_path_obj.relative_to(vault_dir)
+            source_link = str(relative_source).replace('\\', '/')
+        except ValueError:
+            # Path is outside vault, use as-is
+            source_link = str(source_path).replace('\\', '/')
+    else:
+        source_link = str(source_path).replace('\\', '/')
     
     # Generate filename from timestamp and title
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -42,7 +55,7 @@ def create_notification(
         "---",
         f"type: {notification_type}",
         f"created: {datetime.now().isoformat()}",
-        f"source: \"[[{source_path}]]\"",
+        f"source: \"[[{source_link}]]\"",
     ]
     
     if metadata:
