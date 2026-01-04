@@ -164,7 +164,7 @@ def create_new_note(note_type: str):
     # Create meeting note
     vault_root = Path(settings.obsidian_vault_dir)
     vault_name = vault_root.name
-    meetings_dir = vault_root / "_scratch" / "human" / "meetings"
+    meetings_dir = vault_root / "meetings" / "notes"
     meetings_dir.mkdir(parents=True, exist_ok=True)
     
     # Generate filename with timestamp
