@@ -133,7 +133,7 @@ def write_pr_file(
         my_role: "author", "reviewer", or "both"
         timeline: Sorted list of PR events
         action_signals: Dict with action_type, last_actor, last_event_at
-        output_dir: Directory to write files to (e.g., workspace/_ingest/github)
+        output_dir: Directory to write files to (e.g., workspace/github/prs)
         active: Whether PR is currently active/open
     
     Returns:

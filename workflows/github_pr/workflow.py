@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 
 from common.types import RunContext
+from common.inbox import create_notification
 from settings import settings
 from common.github_client import (
     fetch_user_involved_prs,
@@ -15,9 +16,9 @@ from common.github_client import (
     is_stale_review,
     is_ignored_pr,
 )
-from workflows.ingest_github_pr import writer
+from workflows.github_pr import writer
 
-DESCRIPTION = "Fetch GitHub PRs involving the user and write to _ingest/github/"
+DESCRIPTION = "Fetch GitHub PRs and notify when action signals change"
 
 logger = logging.getLogger(__name__)
 
@@ -25,18 +26,18 @@ logger = logging.getLogger(__name__)
 async def run(context: RunContext, state: dict) -> dict:
     """Ingest all open PRs where the user is involved.
     
-    Fetches current open PRs from GitHub, writes them to _ingest/github/,
+    Fetches current open PRs from GitHub, writes them to github/prs/,
     and marks PRs no longer in the query as inactive.
     
     Args:
         context: Workflow run context
-        state: Workflow state (not used - this workflow is stateless)
+        state: Workflow state with PR action signals tracking
     
     Returns:
-        Updated state dict (unchanged)
+        Updated state dict with current PR action signals
     """
     workspace = Path(settings.obsidian_vault_dir)
-    output_dir = workspace / "_ingest" / "github"
+    output_dir = workspace / "github" / "prs"
     
     # Get GitHub username from settings
     my_username = settings.github_username
@@ -45,6 +46,13 @@ async def run(context: RunContext, state: dict) -> dict:
         return state
     
     logger.info(f"Fetching open PRs for user: {my_username}")
+    
+    # Load previous state
+    previous_prs = state.get("prs", {})
+    logger.info(f"Loaded state for {len(previous_prs)} previously tracked PRs")
+    
+    # Track current PRs and their signals
+    current_prs = {}
     
     # Fetch all open PRs where user is involved
     pr_issues = await fetch_user_involved_prs(my_username)
@@ -74,6 +82,26 @@ async def run(context: RunContext, state: dict) -> dict:
                 pr, timeline, owner, repo, pr_number, my_username
             )
             
+            # Create PR key for state tracking
+            pr_key = f"{owner}/{repo}/{pr_number}"
+            
+            # Compare with previous state to detect changes
+            previous_signals = previous_prs.get(pr_key)
+            signals_changed = (
+                previous_signals is None or
+                previous_signals.get("action_type") != action_signals["action_type"] or
+                previous_signals.get("last_actor") != action_signals["last_actor"] or
+                previous_signals.get("last_event_at") != action_signals["last_event_at"]
+            )
+            
+            if signals_changed:
+                if previous_signals:
+                    logger.info(
+                        f"PR {pr_key}: Action signals changed from {previous_signals.get('action_type')} to {action_signals['action_type']}"
+                    )
+                else:
+                    logger.info(f"PR {pr_key}: New PR with action signal {action_signals['action_type']}")
+            
             if context.dry_run:
                 # Just log what would be written
                 created_date = pr.created_at.replace('Z', '+00:00')
@@ -82,6 +110,8 @@ async def run(context: RunContext, state: dict) -> dict:
                 filename = f"{date_str} — pr-{owner}-{repo}-{pr_number}.md"
                 output_path = output_dir / filename
                 logger.info(f"[DRY-RUN] Would write: {output_path}")
+                if signals_changed:
+                    logger.info(f"[DRY-RUN] Would create Inbox notification for {pr_key}")
                 current_pr_files.add(filename)
             else:
                 # Write PR file
@@ -95,6 +125,44 @@ async def run(context: RunContext, state: dict) -> dict:
                     active=True
                 )
                 current_pr_files.add(filepath.name)
+                
+                # Create Inbox notification if action signals changed
+                if signals_changed:
+                    try:
+                        notification_title = f"PR: {pr.title}"
+                        notification_metadata = {
+                            "pr_number": pr_number,
+                            "repository": f"{owner}/{repo}",
+                            "action_type": action_signals["action_type"],
+                            "last_actor": action_signals["last_actor"],
+                            "my_role": my_role,
+                        }
+                        
+                        notification_path = create_notification(
+                            title=notification_title,
+                            source_path=filepath,
+                            notification_type="github_pr",
+                            metadata=notification_metadata
+                        )
+                        logger.info(f"Created Inbox notification: {notification_path}")
+                        
+                        # Only add to current_prs after successful notification creation
+                        current_prs[pr_key] = {
+                            "action_type": action_signals["action_type"],
+                            "last_actor": action_signals["last_actor"],
+                            "last_event_at": action_signals["last_event_at"],
+                        }
+                    except Exception as e:
+                        logger.error(f"Failed to create Inbox notification for {pr_key}: {e}")
+                        # Don't add to current_prs on failure - will retry next run
+                        continue
+                else:
+                    # No change, update state without notification
+                    current_prs[pr_key] = {
+                        "action_type": action_signals["action_type"],
+                        "last_actor": action_signals["last_actor"],
+                        "last_event_at": action_signals["last_event_at"],
+                    }
             
         except Exception as e:
             logger.error(f"Failed to process PR {pr_url}: {e}")
@@ -107,7 +175,9 @@ async def run(context: RunContext, state: dict) -> dict:
                 writer.mark_inactive(existing_file)
     
     logger.info(f"GitHub ingest complete. Processed {len(current_pr_files)} active PRs")
-    return state
+    
+    # Return updated state with current PR signals
+    return {"prs": current_prs}
 
 
 async def _compute_action_signals(

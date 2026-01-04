@@ -1,0 +1,59 @@
+"""Utilities for working with the Inbox."""
+
+import logging
+from datetime import datetime
+from pathlib import Path
+from settings import settings
+
+logger = logging.getLogger(__name__)
+
+
+def create_notification(
+    title: str,
+    source_path: str,
+    notification_type: str,
+    metadata: dict = None
+) -> Path:
+    """Create a notification in the Inbox.
+    
+    Args:
+        title: Title for the notification
+        source_path: Path to the source artifact (can be absolute or relative to vault)
+        notification_type: Type of notification (e.g., 'meeting_transcript', 'github_pr')
+        metadata: Optional additional metadata to include in frontmatter
+    
+    Returns:
+        Path to the created notification file
+    """
+    vault_dir = Path(settings.OBSIDIAN_VAULT_DIR)
+    inbox_dir = vault_dir / "_inbox"
+    inbox_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Generate filename from timestamp and title
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    safe_title = "".join(c if c.isalnum() or c in (' ', '-') else '' for c in title)
+    safe_title = safe_title.replace(' ', '-')[:50]  # Limit length
+    filename = f"{timestamp}-{safe_title}.md"
+    
+    notification_path = inbox_dir / filename
+    
+    # Build frontmatter
+    frontmatter_lines = [
+        "---",
+        f"type: {notification_type}",
+        f"created: {datetime.now().isoformat()}",
+        f"source: \"[[{source_path}]]\"",
+    ]
+    
+    if metadata:
+        for key, value in metadata.items():
+            frontmatter_lines.append(f"{key}: {value}")
+    
+    frontmatter_lines.append("---")
+    
+    # Write notification
+    content = "\n".join(frontmatter_lines) + f"\n\n# {title}\n"
+    notification_path.write_text(content, encoding="utf-8")
+    
+    logger.info(f"Created Inbox notification: {notification_path.name}")
+    return notification_path

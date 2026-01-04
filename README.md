@@ -1,6 +1,96 @@
 # Arugot
 
-A modular Python automation framework for Obsidian vaults. Orchestrates workflows that ingest external data, surface actionable items, and enrich your personal knowledge base through scheduled, idempotent processing.
+Your command center for work and life. Arugot transforms your Obsidian vault into a living system that captures what matters, surfaces what needs attention, and evolves with you. Start by managing everything manually, then gradually automate as your workflows crystallize—no premature optimization, no rigid structures, just a flexible foundation that grows with your needs.
+
+## Core Concept: The Inbox Pattern
+
+Work flows through an Inbox in three steps:
+
+1. **Create notification** in `_inbox/` when something needs attention
+2. **Process however you want**: Manual, Copilot-assisted, or automated
+3. **Mark complete**: Move to `_archive/` when done
+
+### Key Principles
+
+**Notifications ≠ Artifacts**  
+The Inbox contains messages about work needing attention. Messages point to source artifacts stored elsewhere—they don't contain the content themselves.
+
+**Processing is your choice**  
+Manual, Copilot-assisted, or automated. The Inbox doesn't dictate how you work.
+
+**Explicit completion**  
+When done, move notification to `_archive/`. Source artifacts stay where they are.
+
+### Vault Structure
+
+**Required:**
+- `_inbox/` - Active notifications
+- `_archive/` - Completed notifications
+
+**Everything else is up to you:**
+- Where artifacts live
+- Folder structure
+- Notification format
+- How notifications are created
+
+The Inbox is just the coordination layer.
+
+---
+
+## Workflows
+
+Workflows are built on top of the Inbox pattern. They automate specific tasks but remain secondary to the core Inbox flow.
+
+### The Workflow Contract
+
+Every workflow must define:
+
+```python
+async def run(context: RunContext, state: dict) -> dict:
+    """
+    The workflow entry point.
+    
+    Args:
+        context: Contains vault_dir, args, trigger info, dry_run flag
+        state: Persisted dict from previous runs
+    
+    Returns:
+        Updated state dict to persist
+    """
+    pass
+
+DESCRIPTION = "One-line description shown by 'list' command"
+```
+
+### What the Framework Provides
+
+- **State management**: Persist data between runs via the returned dict
+- **Logging**: Use `logging.getLogger(__name__)` for consistent logging
+- **Settings access**: Use `from settings import settings` for configuration
+- **Idempotence**: Workflows should be safe to run repeatedly
+- **Dry-run support**: Respect `context.dry_run` flag for read-only testing
+
+### Design Philosophy
+
+**Start Simple** - Build the minimal workflow that solves your problem, refactor later
+
+**Composition Over Inheritance** - Share functionality through utility modules, not base classes
+
+**Clear Boundaries** - Each workflow has one clear purpose
+
+**Implementation Freedom** - How you accomplish the task is entirely up to you
+
+The framework provides state, logging, and settings—everything else is your choice.
+
+### Documentation Convention
+
+Each workflow should:
+- Live in its own folder under `workflows/`
+- Include a `[workflow-name].md` file documenting its purpose, design decisions, and usage
+
+This keeps workflow-specific details close to the code without bloating the main README.
+
+---
 
 ## Features
 
@@ -9,26 +99,6 @@ A modular Python automation framework for Obsidian vaults. Orchestrates workflow
 - **State Management**: JSON-based state tracking for each workflow
 - **Robust Logging**: Centralized logging to console and files
 - **Environment Configuration**: All settings via `.env` file
-- **Windows Startup Integration**: Auto-start scheduler on system boot
-
-## Vault Organization
-
-The Obsidian vault is organized into three layers:
-
-- **`_ingest/`** - Raw data from external systems (APIs, tools, files)
-- **`_scratch/`** - Scratchpad for work-in-progress: `auto/` (machine workspace) and `human/` (human workspace for notes, todos, drafts)
-- **Root-level notes** - Your source of truth, organized however you like (AI-powered search reduces need for strict folder hierarchies)
-
-## Workflow Philosophy
-
-Workflows are organized by layer transitions:
-
-- **Ingest workflows** - Fetch from external sources (APIs, files, tools) → write to `_ingest/`
-  - Naming: `ingest_[source]` (e.g., `ingest_fireflies`, `ingest_github_pr`)
-- **Extractor workflows** - Surface raw data from `_ingest/` → create records in `_scratch/auto/` for further processing
-  - Naming: `extract_[domain]` (e.g., `extract_meetings`, `extract_github_pr`)
-- **Synth workflows** - Analyze `_scratch/` and existing notes → propose changes to enrich curated content
-  - Naming: `synth_[purpose]` (e.g., `synth_weekly_review`)
 
 ## Quick Start
 
@@ -41,14 +111,13 @@ Workflows are organized by layer transitions:
 
 1. Clone the repository:
    ```sh
-   cd c:\dev\productivity
+   cd c:\dev\Arugot
    ```
 
 2. Create a `.env` file with required settings:
    ```env
    RUNTIME_ROOT=C:\dev\productivity_runtime
    LOG_LEVEL=INFO
-   FIREFLIES_API_KEY=your_api_key_here
    OBSIDIAN_VAULT_DIR=C:\path\to\obsidian\vault
    ```
 
@@ -57,153 +126,25 @@ Workflows are organized by layer transitions:
    uv sync
    ```
 
-## Usage
-
-### Running Workflows Manually
-
-Run a workflow once:
-```sh
-uv run python main.py run <workflow_name> [--arg key=value ...] [--dry-run]
-```
-
-Example:
-```sh
-uv run python main.py run ingest_fireflies
-```
+### Basic Usage
 
 List available workflows:
 ```sh
 uv run python main.py list
 ```
 
-### Quick Capture: Creating Meeting Notes
-
-Create a timestamped meeting note and open it in Obsidian:
+Run a workflow:
 ```sh
-uv run python main.py new meeting
+uv run python main.py run <workflow_name> [--arg key=value ...] [--dry-run]
 ```
 
-This command:
-- Creates a file in `_scratch/human/meetings/` with format: `YYYY-MM-DD HHMM — Meeting.md`
-- Populates it with frontmatter template (source, meeting_date)
-- Opens it directly in Obsidian for immediate note-taking
-
-**Zero-friction setup with AutoHotkey:**
-
-First, find your `uv.exe` path:
-```powershell
-Get-Command uv | Select-Object -ExpandProperty Source
-```
-
-Then add to your AutoHotkey v2 script (replace the uv.exe path with yours):
-```ahk
-^+m::Run A_ComSpec ' /c "cd /d C:\dev\Arugot && C:\Users\YourUsername\.local\bin\uv.exe run python main.py new meeting"'
-```
-
-Now press `Ctrl+Shift+M` from anywhere to instantly create and open a meeting note.
-
-### Running the Scheduler
-
-The scheduler automatically runs workflows based on configured schedules.
-
-#### Manual Start (Development)
-
-Start the scheduler in your terminal:
+Start the scheduler:
 ```sh
 uv run python main.py schedule
 ```
 
-Stop with `Ctrl+C` for graceful shutdown.
+---
 
-#### Automated Start (Production)
+## Primary Workflows
 
-Use the PowerShell startup script:
-```sh
-.\start_scheduler.ps1
-```
-
-The script will:
-- Check for duplicate scheduler instances
-- Activate the UV environment
-- Start the scheduler in the background
-- Redirect output to logs
-
-#### Windows Startup Integration
-
-To run the scheduler automatically when Windows starts:
-
-1. A shortcut to `start_scheduler.ps1` should already be in your Windows Startup folder:
-   ```
-   %APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\Productivity Scheduler.lnk
-   ```
-
-2. The scheduler will start automatically on next login/restart
-
-3. To disable auto-start: Delete or move the shortcut from the Startup folder
-
-#### Stopping the Scheduler
-
-Find the running scheduler process:
-```powershell
-Get-Process python | Where-Object {$_.CommandLine -like '*schedule*'}
-```
-
-Stop it by ID:
-```powershell
-Stop-Process -Id <PID>
-```
-
-Or stop all Python processes (use with caution):
-```powershell
-Get-Process python | Stop-Process
-```
-
-### Viewing Logs
-
-Logs are stored in `{RUNTIME_ROOT}/logs/`:
-- **scheduler.log**: Scheduler activity and workflow triggers
-- **{workflow_name}.log**: Individual workflow execution logs
-
-View scheduler log:
-```powershell
-Get-Content C:\dev\productivity_runtime\logs\scheduler.log -Tail 50 -Wait
-```
-
-### Checking Scheduler Status
-
-Check if scheduler is running:
-```powershell
-Get-Process python | Where-Object {$_.CommandLine -like '*schedule*'}
-```
-
-Check the PID file:
-```powershell
-Test-Path C:\dev\productivity_runtime\scheduler.pid
-Get-Content C:\dev\productivity_runtime\scheduler.pid
-```
-
-## Configuration
-
-All configuration is done via the `.env` file in the project root.
-
-## Updating the Scheduler
-
-To update the scheduler code or configuration:
-
-1. Stop the running scheduler:
-   ```powershell
-   Get-Process python | Where-Object {$_.CommandLine -like '*schedule*'} | Stop-Process
-   ```
-
-2. Pull the latest code:
-   ```sh
-   git pull
-   uv sync
-   ```
-
-3. Update `.env` if needed
-
-4. Restart the scheduler:
-   ```sh
-   .\start_scheduler.ps1
-   ```
+*(This section will document specific workflows you build on top of the Inbox pattern)*

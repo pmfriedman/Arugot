@@ -1,7 +1,7 @@
 # Copilot Instructions for Arugot
 
 ## Overview
-This project is a modular Python automation framework for Obsidian vaults. It orchestrates workflows that ingest external data, surface actionable items, and enrich your personal knowledge base through scheduled, idempotent processing. The vault is organized into three layers: `_ingest/` (raw data), `_scratch/` (work-in-progress), and root-level notes (curated content).
+Python automation framework for Obsidian vaults built on the Inbox pattern. Work flows through `_inbox/` (notifications about what needs attention) → process however you want → `_archive/` when complete. Workflows automate tasks but are secondary to the core Inbox flow. Start manual, automate gradually.
 
 ## Development Workflow
 
@@ -16,34 +16,35 @@ This project is a modular Python automation framework for Obsidian vaults. It or
 
 ## Architecture
 - **Entrypoint:** `main.py` parses CLI commands (`run`, `list`, `schedule`) and dispatches to the workflow runner or scheduler.
-- **Workflows:** Located in `workflows/`, each workflow is a Python module with an `async def run(context, state)` function. Examples: `workflows/example.py`, `workflows/ingest_fireflies/workflow.py`.
+- **Workflows:** Located in `workflows/`, each workflow is a Python module with an `async def run(context, state)` function. Examples: `workflows/example.py`, `workflows/fireflies/workflow.py`.
 - **Scheduler:** `scheduler/scheduler.py` runs workflows on cron schedules with timezone support.
 - **State Management:** Workflow state is persisted as JSON in `{runtime_root}/state/{workflow}.json` via `runner/state.py`.
 - **Logging:** Centralized in `common/logging.py`, logs to both console and files under `{runtime_root}/logs/`.
 - **Settings:** All configuration is via environment variables or `.env`, loaded by `settings.py` using `pydantic-settings`.
 - **Types:** Shared data structures (e.g., `RunContext`, `Trigger`) are in `common/types.py`.
-- **Workflow Example:** The `ingest_fireflies` workflow demonstrates API integration, normalization, and writing to an Obsidian vault.
+- **Workflow Example:** The `fireflies` workflow demonstrates API integration, normalization, and writing to an Obsidian vault.
 
 ## Key Patterns & Conventions
 
 ### Vault Organization
-- **`_ingest/`** - Raw data from external systems (APIs, tools, files)
-- **`_scratch/auto/`** - Machine workspace for work-in-progress
-- **`_scratch/human/`** - Human workspace for notes, todos, drafts
-- **Root-level notes** - Curated content, source of truth
+**Required folders:**
+- **`_inbox/`** - Active notifications about work needing attention
+- **`_archive/`** - Completed notifications
 
-### Workflow Types
-- **Ingest workflows** - Fetch from external sources → write to `_ingest/`
-  - Naming: `ingest_[source]` (e.g., `ingest_fireflies`, `ingest_github_pr`)
-- **Extractor workflows** - Surface raw data from `_ingest/` → create records in `_scratch/auto/`
-  - Naming: `extract_[domain]` (e.g., `extract_meetings`, `extract_github_pr`)
-- **Synth workflows** - Analyze `_scratch/` and existing notes → propose changes to enrich curated content
-  - Naming: `synth_[purpose]` (e.g., `synth_weekly_review`)
+**Everything else is flexible:** Artifact location, folder structure, and organization are up to the user.
+
+### Workflows
+
+Workflows are built on top of the Inbox. No rigid taxonomy—let patterns emerge organically. Common approaches:
+- Create Inbox notifications when something needs attention
+- Process notifications (manual, Copilot-assisted, or automated)
+- Move to `_archive/` when complete
 
 ### Core Conventions
 - **Workflow Contract:** Each workflow must define:
   - `async def run(context: RunContext, state: dict) -> dict` - The workflow entry point. State is a dict, persisted between runs.
   - `DESCRIPTION` (str) - A concise one-line description shown by the `list` command
+- **Workflow Documentation:** Each workflow lives in its own folder with a `[workflow-name].md` file documenting purpose, design decisions, and usage
 - **Idempotence:** Workflows must be safe to run repeatedly. Use reconciliation patterns (check before create).
 - **State Schema:** State files must be JSON objects with `version` and `data` fields. See `runner/state.py` for validation logic.
 - **Logging:** Use `logging.getLogger(__name__)` and rely on `configure_logging()` for setup. Avoid side effects at import time.

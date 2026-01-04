@@ -2,14 +2,17 @@
 
 import logging
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 
 from common.types import RunContext
-from workflows.ingest_fireflies import client
-from workflows.ingest_fireflies.model import FirefliesMeeting
-from workflows.ingest_fireflies import writer
+from common.inbox import create_notification
+from workflows.fireflies import client
+from workflows.fireflies.model import FirefliesMeeting
+from workflows.fireflies import writer
 from runner.state import save_state
+from settings import settings
 
-DESCRIPTION = "Fetch meeting transcripts from Fireflies.ai and write to _ingest/fireflies/"
+DESCRIPTION = "Fetch Fireflies transcripts and create Inbox notifications"
 
 logger = logging.getLogger(__name__)
 
@@ -211,8 +214,6 @@ async def run(context: RunContext, state: dict) -> dict:
         logger.info("[DRY-RUN] Skipping file writes")
         for meeting in normalized_meetings:
             # Compute what the path would be
-            from pathlib import Path
-
             datetime_str = meeting.ended_at.strftime("%Y-%m-%d %H%M")
             title_part = meeting.title if meeting.title else "Meeting"
             safe_title = "".join(
@@ -220,10 +221,9 @@ async def run(context: RunContext, state: dict) -> dict:
             )
             safe_title = " ".join(safe_title.split())
             filename = f"{datetime_str} — {safe_title} — ff_{meeting.meeting_id}.md"
-            from settings import settings
 
             output_path = (
-                Path(settings.obsidian_vault_dir) / "_ingest" / "fireflies" / filename
+                Path(settings.obsidian_vault_dir) / "meetings" / "transcripts" / filename
             )
             logger.info("[DRY-RUN] Would write: %s", output_path)
     else:
@@ -238,12 +238,29 @@ async def run(context: RunContext, state: dict) -> dict:
                 ):
                     continue  # Already tracked
 
-                # Determine if this was a new write by checking if file was just created
-                # writer.write_meeting logs "File already exists" or "Wrote meeting to"
-                # We track success if file exists regardless
+                # Create Inbox notification for newly written transcripts
+                # Get relative path from vault root for the wikilink
+                vault_dir = Path(settings.obsidian_vault_dir)
+                relative_path = path.relative_to(vault_dir)
+                
+                # Create notification with meeting metadata
+                metadata = {}
+                if meeting.participants:
+                    speakers = [p.get("name") for p in meeting.participants if p.get("source") == "speakers" and p.get("name")]
+                    if speakers:
+                        metadata["speakers"] = ", ".join(speakers)
+                if meeting.duration_seconds:
+                    metadata["duration_minutes"] = round(meeting.duration_seconds / 60)
+                
+                create_notification(
+                    title=f"Process: {meeting.title or 'Meeting'} transcript",
+                    source_path=str(relative_path).replace("\\", "/"),
+                    notification_type="meeting_transcript",
+                    metadata=metadata
+                )
+                
+                # Only track success after both file write AND notification creation succeed
                 successfully_written.append(meeting)
-
-                # Track if it was new or existing (writer logs this, but count here too)
                 written_count += 1
 
         logger.info("Files written or already existed: %d", written_count)
@@ -300,7 +317,7 @@ async def run(context: RunContext, state: dict) -> dict:
             new_state = {
                 "processed_ids": new_processed_ids,
             }
-            save_state("ingest_fireflies", new_state)
+            save_state("fireflies", new_state)
             logger.info("State persisted successfully")
         else:
             logger.info("No state changes to persist")

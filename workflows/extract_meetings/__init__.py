@@ -1,13 +1,9 @@
 """Meeting Extractor Workflow
 
-A schedule-driven, idempotent workflow that ensures every ingested
-meeting transcript has exactly one corresponding machine-owned working document.
+⚠️ DEPRECATED - This workflow is on pause.
 
-Operates as a filesystem reconciler — no LLM analysis, just structural creation.
+Represents premature automation. Left as reference code but not registered.
+See extract_meetings.md for details.
 """
 
-from workflows.extract_meetings.workflow import run, DESCRIPTION
-
-__all__ = ["run", "DESCRIPTION"]
-
-__all__ = ["run"]
+# Workflow registration removed - not callable

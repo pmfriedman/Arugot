@@ -1,6 +1,9 @@
-"""Extract GitHub PR workflow."""
+"""Extract GitHub PR workflow.
 
+⚠️ DEPRECATED - This workflow is on pause.
 
-from workflows.extract_github_pr.workflow import run, DESCRIPTION
+Represents premature automation. Left as reference code but not registered.
+See extract_github_pr.md for details.
+"""
 
-__all__ = ["run", "DESCRIPTION"]
+# Workflow registration removed - not callable

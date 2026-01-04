@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from settings import settings
-from workflows.ingest_fireflies.model import FirefliesMeeting
+from workflows.fireflies.model import FirefliesMeeting
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ def write_meeting(meeting: FirefliesMeeting) -> Path:
         Path to the written (or existing) file
     """
     # Determine output directory
-    output_dir = Path(settings.obsidian_vault_dir) / "_ingest" / "fireflies"
+    output_dir = Path(settings.obsidian_vault_dir) / "meetings" / "transcripts"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Generate deterministic filename with timestamp for chronological sorting
