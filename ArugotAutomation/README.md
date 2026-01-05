@@ -151,6 +151,7 @@ uv run python main.py schedule
 - Automatically Update Internal Links
 - Hotkey for strikethrough (ctrl-hyphen)
 - Hotkey for Move To A Different Folder (ctrl-shift-A)
+- Install the Advanced URI plugin
 
 #### AutoHotKey
 

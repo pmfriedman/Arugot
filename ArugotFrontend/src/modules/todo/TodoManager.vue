@@ -37,7 +37,7 @@ const parseResult = computed<ParseResult>(() => {
 const todos = computed<TodoItem[]>(() => {
   if (parseResult.value.success) {
     parseError.value = "";
-    return parseResult.value.todos;
+    return parseResult.value.todos.filter((todo) => !todo.completed);
   } else {
     parseError.value = `Line ${parseResult.value.errorLine}: ${parseResult.value.error}`;
     return [];

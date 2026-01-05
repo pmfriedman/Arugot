@@ -59,7 +59,7 @@
               class="task-checkbox"
             />
             <a
-              :href="getObsidianUrl(filePath)"
+              :href="getObsidianUrl(filePath, task.lineNumber)"
               class="task-link"
               title="Open in Obsidian"
             >
@@ -88,16 +88,21 @@ interface VaultTask {
   completed: boolean;
 }
 
+// Toggle this to switch between standard Obsidian links and Advanced URI plugin links
+// Set to false to revert to basic file opening (no line numbers)
+const USE_ADVANCED_URI = true;
+
 const { vaultDirectory, selectDirectory, restoreDirectoryHandle } =
   useVaultDirectory();
 const tasks = ref<VaultTask[]>([]);
 const isScanning = ref(false);
 const error = ref("");
 
-// Group tasks by file
+// Group tasks by file (exclude completed)
 const groupedTasks = computed(() => {
   const groups: Record<string, VaultTask[]> = {};
   for (const task of tasks.value) {
+    if (task.completed) continue; // Skip completed tasks
     if (!groups[task.filePath]) {
       groups[task.filePath] = [];
     }
@@ -107,13 +112,21 @@ const groupedTasks = computed(() => {
 });
 
 // Generate Obsidian deep link
-function getObsidianUrl(filePath: string): string {
+function getObsidianUrl(filePath: string, lineNumber?: number): string {
   const vaultName = vaultDirectory.value?.name || "vault";
-  // Remove .md extension for Obsidian links
-  const filePathWithoutExt = filePath.replace(/\.md$/, "");
-  return `obsidian://open?vault=${encodeURIComponent(
-    vaultName
-  )}&file=${encodeURIComponent(filePathWithoutExt)}`;
+
+  if (USE_ADVANCED_URI && lineNumber) {
+    // Advanced URI plugin format: obsidian://advanced-uri?vault=X&filepath=Y&line=Z
+    return `obsidian://advanced-uri?vault=${encodeURIComponent(
+      vaultName
+    )}&filepath=${encodeURIComponent(filePath)}&line=${lineNumber}`;
+  } else {
+    // Standard Obsidian link (just opens the file)
+    const filePathWithoutExt = filePath.replace(/\.md$/, "");
+    return `obsidian://open?vault=${encodeURIComponent(
+      vaultName
+    )}&file=${encodeURIComponent(filePathWithoutExt)}`;
+  }
 }
 
 async function selectVaultDirectory() {
