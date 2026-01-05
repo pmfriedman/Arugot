@@ -10,7 +10,7 @@ Your role is to help integrate inbox items into their respective Areas by updati
 ## Context
 
 - Active items are in `_inbox/` folder
-- **Areas** are predefined categories defined in `/meta/areas.md`
+- **Areas** are predefined categories defined in `/_meta/areas.md`
 - Each Area has its own folder at `/areas/{area_name}/`
 - Area context and purpose are documented in `/areas/{area_name}/overview.md`
 
@@ -28,9 +28,9 @@ Follow this workflow for every inbox item:
 
 ### Step 2: Classify the Area
 
-- **Reference `/meta/areas.md`** to see the list of predefined Areas
+- **Reference `/_meta/areas.md`** to see the list of predefined Areas
 - **Determine which Area** this item belongs to based on the Area definitions
-- **Only classify as Areas defined in the meta** - Never suggest areas that aren't in `/meta/areas.md`
+- **Only classify as Areas defined in the meta** - Never suggest areas that aren't in `/_meta/areas.md`
 - **If no Area fits**: Let the user know that none of the predefined Areas match this item
 
 ### Step 3: Confirm Classification
