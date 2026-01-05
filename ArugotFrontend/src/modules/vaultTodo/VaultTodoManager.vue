@@ -5,25 +5,10 @@
       <p class="subtitle">Browse all checkboxes across your Obsidian vault</p>
     </div>
 
-    <div class="controls">
-      <button @click="selectVaultDirectory" class="btn-primary">
-        {{ vaultDirectory ? "Change Vault" : "Select Vault" }}
-      </button>
-      <button
-        @click="scanVault"
-        :disabled="!vaultDirectory || isScanning"
-        class="btn-secondary"
-      >
+    <div v-if="vaultDirectory" class="controls">
+      <button @click="scanVault" :disabled="isScanning" class="btn-secondary">
         {{ isScanning ? "Scanning..." : "Refresh Tasks" }}
       </button>
-    </div>
-
-    <div v-if="vaultDirectory" class="vault-info">
-      <strong>Vault:</strong> {{ vaultDirectory.name }}
-    </div>
-
-    <div v-if="error" class="error-message">
-      {{ error }}
     </div>
 
     <div v-if="isScanning" class="scanning-status">
@@ -73,12 +58,16 @@
     <div v-else-if="vaultDirectory && !isScanning" class="empty-state">
       <p>No tasks found. Click "Refresh Tasks" to scan the vault.</p>
     </div>
+
+    <div v-else class="instructions">
+      <p>Please select your Obsidian vault using the vault picker above.</p>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
-import { useVaultDirectory } from "./composables/useVaultDirectory";
+import { ref, computed, watch } from "vue";
+import { useVaultDirectory } from "../../composables/useVaultDirectory";
 
 interface VaultTask {
   id: string;
@@ -92,11 +81,9 @@ interface VaultTask {
 // Set to false to revert to basic file opening (no line numbers)
 const USE_ADVANCED_URI = true;
 
-const { vaultDirectory, selectDirectory, restoreDirectoryHandle } =
-  useVaultDirectory();
+const { vaultDirectory } = useVaultDirectory();
 const tasks = ref<VaultTask[]>([]);
 const isScanning = ref(false);
-const error = ref("");
 
 // Group tasks by file (exclude completed)
 const groupedTasks = computed(() => {
@@ -129,34 +116,29 @@ function getObsidianUrl(filePath: string, lineNumber?: number): string {
   }
 }
 
-async function selectVaultDirectory() {
-  try {
-    error.value = "";
-    await selectDirectory();
-    tasks.value = [];
-  } catch (err: any) {
-    error.value = `Failed to select directory: ${err.message}`;
-  }
-}
-
-onMounted(async () => {
-  const restored = await restoreDirectoryHandle();
-  if (restored) {
-    await scanVault();
-  }
-});
+// Watch for vault directory changes and auto-scan
+watch(
+  vaultDirectory,
+  async (newVault) => {
+    if (newVault) {
+      await scanVault();
+    } else {
+      tasks.value = [];
+    }
+  },
+  { immediate: true }
+);
 
 async function scanVault() {
   if (!vaultDirectory.value) return;
 
   try {
-    error.value = "";
     isScanning.value = true;
     tasks.value = [];
 
     await scanDirectory(vaultDirectory.value, "");
   } catch (err: any) {
-    error.value = `Scan failed: ${err.message}`;
+    console.error("Scan failed:", err);
   } finally {
     isScanning.value = false;
   }
@@ -216,55 +198,43 @@ async function scanMarkdownFile(
 
 <style scoped>
 .vault-todo-manager {
-  height: 100%;
+  padding: 1rem;
   display: flex;
   flex-direction: column;
+  height: 100%;
 }
 
 .header {
-  margin-bottom: 20px;
+  margin-bottom: 1.5rem;
 }
 
 .header h2 {
-  margin: 0 0 8px 0;
-  font-size: 24px;
-  color: #2c3e50;
+  color: #42b883;
+  margin: 0 0 0.25rem 0;
 }
 
 .subtitle {
+  color: #666;
   margin: 0;
-  color: #7f8c8d;
-  font-size: 14px;
+  font-size: 0.9rem;
 }
 
 .controls {
   display: flex;
   gap: 10px;
-  margin-bottom: 20px;
+  align-items: center;
+  margin-bottom: 15px;
 }
 
-.btn-primary,
 .btn-secondary {
   padding: 10px 20px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.btn-primary {
-  background-color: #007bff;
-  color: white;
-}
-
-.btn-primary:hover {
-  background-color: #0056b3;
-}
-
-.btn-secondary {
   background-color: #6c757d;
   color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
 }
 
 .btn-secondary:hover:not(:disabled) {
@@ -276,22 +246,17 @@ async function scanMarkdownFile(
   cursor: not-allowed;
 }
 
-.vault-info {
-  padding: 10px;
-  background: #e7f3ff;
+.instructions {
+  background: #e3f2fd;
+  padding: 1.5rem;
   border-radius: 6px;
-  margin-bottom: 20px;
-  font-size: 14px;
-  color: #004085;
+  margin-top: 2rem;
+  border-left: 4px solid #2196f3;
 }
 
-.error-message {
-  padding: 12px;
-  background-color: #f8d7da;
-  color: #721c24;
-  border: 1px solid #f5c6cb;
-  border-radius: 6px;
-  margin-bottom: 20px;
+.instructions p {
+  margin: 0;
+  color: #333;
 }
 
 .scanning-status {

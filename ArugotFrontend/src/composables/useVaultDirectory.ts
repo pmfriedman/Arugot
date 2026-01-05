@@ -4,9 +4,15 @@ const DB_NAME = "arugot-vault-db";
 const STORE_NAME = "vaultDirectory";
 const KEY = "vaultDirectoryHandle";
 
-export function useVaultDirectory() {
-  const vaultDirectory = ref<FileSystemDirectoryHandle | null>(null);
+// Global shared state for the vault directory
+const vaultDirectory = ref<FileSystemDirectoryHandle | null>(null);
+const isLoading = ref(false);
 
+/**
+ * Global composable for managing the Obsidian vault directory.
+ * This is a singleton - all components share the same vault directory state.
+ */
+export function useVaultDirectory() {
   async function openDB(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(DB_NAME, 1);
@@ -54,12 +60,15 @@ export function useVaultDirectory() {
   }
 
   async function restoreDirectoryHandle(): Promise<boolean> {
-    const handle = await loadDirectoryHandle();
-    if (!handle) return false;
-
+    isLoading.value = true;
     try {
+      const handle = await loadDirectoryHandle();
+      if (!handle) return false;
+
       // Verify we still have permission
-      const permission = await (handle as any).queryPermission({ mode: "readwrite" });
+      const permission = await (handle as any).queryPermission({
+        mode: "readwrite",
+      });
       if (permission === "granted") {
         vaultDirectory.value = handle;
         return true;
@@ -73,11 +82,13 @@ export function useVaultDirectory() {
         vaultDirectory.value = handle;
         return true;
       }
-    } catch {
-      // Handle no longer valid
-    }
 
-    return false;
+      return false;
+    } catch {
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   async function selectDirectory(): Promise<FileSystemDirectoryHandle | null> {
@@ -97,9 +108,66 @@ export function useVaultDirectory() {
     }
   }
 
+  /**
+   * Get a file handle for a specific file in the vault
+   */
+  async function getFileHandle(
+    filePath: string
+  ): Promise<FileSystemFileHandle | null> {
+    if (!vaultDirectory.value) return null;
+
+    try {
+      const fileHandle = await vaultDirectory.value.getFileHandle(filePath, {
+        create: false,
+      });
+      return fileHandle;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Read a file from the vault
+   */
+  async function readFile(filePath: string): Promise<string | null> {
+    const fileHandle = await getFileHandle(filePath);
+    if (!fileHandle) return null;
+
+    try {
+      const file = await fileHandle.getFile();
+      return await file.text();
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Write content to a file in the vault
+   */
+  async function writeFile(
+    filePath: string,
+    content: string
+  ): Promise<boolean> {
+    const fileHandle = await getFileHandle(filePath);
+    if (!fileHandle) return false;
+
+    try {
+      const writable = await (fileHandle as any).createWritable();
+      await writable.write(content);
+      await writable.close();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   return {
     vaultDirectory,
+    isLoading,
     selectDirectory,
     restoreDirectoryHandle,
+    getFileHandle,
+    readFile,
+    writeFile,
   };
 }

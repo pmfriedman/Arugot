@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
-import { useFileHandle } from "./composables/useFileHandle";
-import { useFileIO } from "./composables/useFileIO";
+import { ref, computed, watch } from "vue";
+import { useVaultDirectory } from "../../composables/useVaultDirectory";
 import { useAutoSave } from "./composables/useAutoSave";
 import { useFileWatcher } from "./composables/useFileWatcher";
 import {
@@ -12,17 +11,19 @@ import {
 } from "./utils/markdownParser";
 import TodoList from "./components/TodoList.vue";
 
+const GLOBAL_TODO_FILE = "Global TODO.md";
+
 const error = ref<string>("");
 const parseError = ref<string>("");
+const fileContent = ref<string>("");
+const isSaving = ref<boolean>(false);
+const fileExists = ref<boolean>(false);
 
 // Check if File System Access API is supported
-const isSupported = "showOpenFilePicker" in window;
+const isSupported = "showDirectoryPicker" in window;
 
 // Composables
-const { fileHandle, fileName, isRestoring, openFilePicker, restoreFileHandle } =
-  useFileHandle();
-const { fileContent, permissionStatus, isSaving, readFile, writeFile } =
-  useFileIO();
+const { vaultDirectory, readFile, writeFile } = useVaultDirectory();
 const { isWatching, startWatching, clearExternalChanges, updateTrackedState } =
   useFileWatcher();
 
@@ -45,86 +46,96 @@ const todos = computed<TodoItem[]>(() => {
 });
 
 const hasValidFormat = computed(() => parseResult.value.success);
-// TODO: Parse markdown into structured TodoItems
-// const todos = computed(() => parseMarkdownTodos(fileContent.value));
-
-const handleOpenFile = async () => {
-  try {
-    error.value = "";
-
-    const result = await openFilePicker();
-    if (result) {
-      await loadFile();
-    }
-  } catch (err: any) {
-    error.value = `Error opening file: ${err.message}`;
-  }
-};
 
 const loadFile = async () => {
+  if (!vaultDirectory.value) return;
+
   try {
-    await readFile(fileHandle.value);
+    error.value = "";
+    const content = await readFile(GLOBAL_TODO_FILE);
+
+    if (content === null) {
+      fileExists.value = false;
+      error.value = `File "${GLOBAL_TODO_FILE}" not found in vault root. Please create this file in your Obsidian vault.`;
+      fileContent.value = "";
+      return;
+    }
+
+    fileExists.value = true;
+    fileContent.value = content;
 
     // Start watching for external changes with auto-reload
-    if (fileHandle.value) {
-      startWatching(fileHandle.value, 2000, async (event) => {
+    const fileHandle = await vaultDirectory.value.getFileHandle(
+      GLOBAL_TODO_FILE,
+      { create: false }
+    );
+    if (fileHandle) {
+      startWatching(fileHandle, 2000, async (event) => {
         console.log("External file change detected, auto-reloading...", event);
         await handleAutoReload();
       });
     }
   } catch (err: any) {
-    error.value = `Error reading file: ${err.message}`;
+    fileExists.value = false;
+    error.value = `Error reading "${GLOBAL_TODO_FILE}": ${err.message}`;
   }
 };
 
 const handleAutoReload = async () => {
   try {
-    await readFile(fileHandle.value);
-    clearExternalChanges();
+    const content = await readFile(GLOBAL_TODO_FILE);
+    if (content !== null) {
+      fileContent.value = content;
+      clearExternalChanges();
 
-    // Update tracked state after reload
-    if (fileHandle.value) {
-      await updateTrackedState(fileHandle.value);
+      // Update tracked state after reload
+      const fileHandle = await vaultDirectory.value?.getFileHandle(
+        GLOBAL_TODO_FILE,
+        { create: false }
+      );
+      if (fileHandle) {
+        await updateTrackedState(fileHandle);
+      }
     }
   } catch (err: any) {
     error.value = `Error auto-reloading file: ${err.message}`;
   }
 };
 
-const handleReload = async () => {
-  try {
-    error.value = "";
-    await readFile(fileHandle.value);
-    clearExternalChanges();
-
-    // Update tracked state after reload
-    if (fileHandle.value) {
-      await updateTrackedState(fileHandle.value);
-    }
-  } catch (err: any) {
-    error.value = `Error reloading file: ${err.message}`;
-  }
-};
-
 const saveFile = async () => {
-  if (!fileHandle.value) return;
+  if (!vaultDirectory.value || !fileExists.value) return;
 
   try {
     error.value = "";
+    isSaving.value = true;
 
-    await writeFile(fileHandle.value, fileContent.value);
+    const success = await writeFile(GLOBAL_TODO_FILE, fileContent.value);
+    if (!success) {
+      error.value = `Error saving "${GLOBAL_TODO_FILE}"`;
+      return;
+    }
 
     // Update tracked state after save to prevent false positive detection
-    await updateTrackedState(fileHandle.value);
+    const fileHandle = await vaultDirectory.value.getFileHandle(
+      GLOBAL_TODO_FILE,
+      { create: false }
+    );
+    if (fileHandle) {
+      await updateTrackedState(fileHandle);
+    }
   } catch (err: any) {
     error.value = `Error saving file: ${err.message}`;
+  } finally {
+    isSaving.value = false;
   }
 };
 
 // Auto-save setup
 useAutoSave(fileContent, saveFile, {
   debounceMs: 1000,
-  enabled: computed(() => !!fileHandle.value && hasValidFormat.value),
+  enabled: computed(
+    () => !!vaultDirectory.value && fileExists.value && hasValidFormat.value
+  ),
 });
 
 // Handle todo item events
@@ -151,56 +162,42 @@ const handleUpdateItems = (items: TodoItem[]) => {
   fileContent.value = serializeTodosToMarkdown(items);
 };
 
-// Restore file handle on mount
-onMounted(async () => {
-  if (!isSupported) return;
-
-  const restored = await restoreFileHandle();
-  if (restored) {
-    await loadFile();
-  }
-});
-
-// - Delete item
-// - Reorder items
-// - Serialize back to markdown and update fileContent
+// Watch for vault directory changes and load the file
+watch(
+  vaultDirectory,
+  async (newVault) => {
+    if (newVault) {
+      await loadFile();
+    } else {
+      fileContent.value = "";
+      fileExists.value = false;
+      error.value = "";
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <template>
   <div class="todo-manager">
-    <h1>TODO List Manager</h1>
+    <div class="header">
+      <h2>Global TODO</h2>
+      <p class="subtitle">Manage tasks from {{ GLOBAL_TODO_FILE }}</p>
+    </div>
 
     <div v-if="!isSupported" class="error">
       ⚠️ File System Access API is not supported in this browser. Please use
       Chrome, Edge, or Opera.
     </div>
 
-    <div v-if="isSupported" class="controls">
-      <button @click="handleOpenFile" class="btn btn-primary">
-        {{ fileHandle ? "📂 Open Different File" : "📂 Open TODO File" }}
-      </button>
-
-      <button v-if="fileHandle" @click="handleReload" class="btn btn-secondary">
-        🔄 Reload
-      </button>
-
+    <div v-if="isSupported && vaultDirectory && fileExists" class="controls">
       <span v-if="isSaving" class="saving-indicator">💾 Saving...</span>
       <span
         v-if="isWatching"
         class="watching-indicator"
-        title="Watching for external changes"
+        title="Automatically reloading on external changes"
         >👁️</span
       >
-    </div>
-
-    <div v-if="fileName" class="file-info">
-      <h3>Current File:</h3>
-      <p>
-        <strong>📄 {{ fileName }}</strong>
-      </p>
-      <p v-if="permissionStatus" class="permission-status">
-        {{ permissionStatus }}
-      </p>
     </div>
 
     <div v-if="error" class="error">❌ {{ error }}</div>
@@ -211,7 +208,7 @@ onMounted(async () => {
 
     <!-- Checkbox UI -->
     <TodoList
-      v-if="fileHandle && hasValidFormat"
+      v-if="vaultDirectory && fileExists && hasValidFormat"
       :items="todos"
       @toggle="handleToggle"
       @update-text="handleUpdateText"
@@ -220,7 +217,7 @@ onMounted(async () => {
     />
 
     <!-- Raw markdown editor (fallback for invalid format) -->
-    <div v-if="fileHandle && !hasValidFormat" class="editor">
+    <div v-if="vaultDirectory && fileExists && !hasValidFormat" class="editor">
       <h3>Raw Markdown (Fix format errors):</h3>
       <textarea
         v-model="fileContent"
@@ -233,44 +230,61 @@ onMounted(async () => {
       </div>
     </div>
 
-    <div v-if="!fileHandle && isSupported && !isRestoring" class="instructions">
+    <div v-if="!vaultDirectory && isSupported" class="instructions">
       <h3>Getting Started:</h3>
-      <p>1. Click "Open TODO File" to select your markdown file</p>
-      <p>2. Edit the content in the text area</p>
-      <p>3. Changes auto-save after 1 second of inactivity!</p>
-      <p>
-        4. Your file will automatically reload when you refresh the page! 🎉
-      </p>
+      <p>1. Select your Obsidian vault using the vault picker above</p>
+      <p>2. Ensure "{{ GLOBAL_TODO_FILE }}" exists in the vault root</p>
+      <p>3. Edit tasks directly in the interface</p>
+      <p>4. Changes auto-save after 1 second of inactivity! 🎉</p>
     </div>
   </div>
 </template>
 
 <style scoped>
 .todo-manager {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 2rem;
-}
-
-h1 {
-  color: #42b883;
-  margin-bottom: 2rem;
-}
-
-.info {
-  background: #e3f2fd;
-  color: #1976d2;
   padding: 1rem;
-  border-radius: 6px;
-  margin-bottom: 1rem;
-  border-left: 4px solid #2196f3;
+}
+
+.header {
+  margin-bottom: 1.5rem;
+}
+
+.header h2 {
+  color: #42b883;
+  margin: 0 0 0.25rem 0;
+}
+
+.subtitle {
+  color: #666;
+  margin: 0;
+  font-size: 0.9rem;
 }
 
 .controls {
   display: flex;
-  gap: 1rem;
-  margin-bottom: 2rem;
+  gap: 10px;
   align-items: center;
+  margin-bottom: 15px;
+}
+
+.btn-secondary {
+  padding: 10px 20px;
+  background-color: #607d8b;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.btn-secondary:hover {
+  background-color: #455a64;
+}
+
+.btn-secondary:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
 }
 
 .saving-indicator {
@@ -295,96 +309,6 @@ h1 {
   }
 }
 
-.warning {
-  background: #fff3e0;
-  color: #e65100;
-  padding: 1rem;
-  border-radius: 6px;
-  margin-bottom: 1rem;
-  border-left: 4px solid #ff9800;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.btn-inline {
-  padding: 0.5rem 1rem;
-  background: #ff9800;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-inline:hover {
-  background: #f57c00;
-  transform: translateY(-1px);
-}
-
-.btn {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 1rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-primary {
-  background: #42b883;
-  color: white;
-}
-
-.btn-success {
-  background: #4caf50;
-  color: white;
-}
-
-.btn-secondary {
-  background: #607d8b;
-  color: white;
-}
-
-.file-info {
-  background: #f5f5f5;
-  padding: 1rem;
-  border-radius: 6px;
-  margin-bottom: 1rem;
-}
-
-.file-info h3 {
-  margin-top: 0;
-  margin-bottom: 0.5rem;
-}
-
-.file-info p {
-  margin: 0.5rem 0;
-}
-
-.permission-status {
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.modified-indicator {
-  color: #ff9800;
-  font-weight: bold;
-}
-
 .error {
   background: #fee;
   color: #c00;
@@ -392,15 +316,6 @@ h1 {
   border-radius: 6px;
   margin-bottom: 1rem;
   border-left: 4px solid #c00;
-}
-
-.success {
-  background: #e8f5e9;
-  color: #2e7d32;
-  padding: 1rem;
-  border-radius: 6px;
-  margin-bottom: 1rem;
-  border-left: 4px solid #2e7d32;
 }
 
 .editor {
