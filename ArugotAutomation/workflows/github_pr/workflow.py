@@ -136,6 +136,7 @@ async def run(context: RunContext, state: dict) -> dict:
                             "action_type": action_signals["action_type"],
                             "last_actor": action_signals["last_actor"],
                             "my_role": my_role,
+                            "pr_url": pr.html_url,
                         }
                         
                         notification_path = create_notification(

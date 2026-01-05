@@ -64,8 +64,18 @@ def create_notification(
     
     frontmatter_lines.append("---")
     
+    # Build notification body
+    body_lines = [f"# {title}"]
+    
+    # Add PR URL link if available (for github_pr notifications)
+    if notification_type == "github_pr" and metadata and "pr_url" in metadata:
+        body_lines.append("")
+        body_lines.append(f"🔗 [View PR on GitHub]({metadata['pr_url']})")
+    
+    body_lines.append("")
+    
     # Write notification
-    content = "\n".join(frontmatter_lines) + f"\n\n# {title}\n"
+    content = "\n".join(frontmatter_lines) + "\n\n" + "\n".join(body_lines)
     notification_path.write_text(content, encoding="utf-8")
     
     logger.info(f"Created Inbox notification: {notification_path.name}")
