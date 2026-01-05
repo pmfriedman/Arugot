@@ -1,9 +1,9 @@
-import { ref, watch } from "vue";
+import { ref, watch, unref, type MaybeRef } from "vue";
 
 export function useAutoSave(
   content: any,
   saveCallback: () => Promise<void>,
-  options: { debounceMs?: number; enabled?: boolean } = {}
+  options: { debounceMs?: number; enabled?: MaybeRef<boolean> } = {}
 ) {
   const { debounceMs = 1000, enabled = true } = options;
 
@@ -11,7 +11,7 @@ export function useAutoSave(
   let autoSaveTimer: number | null = null;
 
   const triggerAutoSave = () => {
-    if (!enabled) return;
+    if (!unref(enabled)) return;
 
     // Clear existing timer
     if (autoSaveTimer !== null) {

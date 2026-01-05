@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useFileHandle } from "./composables/useFileHandle";
 import { useFileIO } from "./composables/useFileIO";
 import { useAutoSave } from "./composables/useAutoSave";
@@ -21,23 +21,10 @@ const isSupported = "showOpenFilePicker" in window;
 // Composables
 const { fileHandle, fileName, isRestoring, openFilePicker, restoreFileHandle } =
   useFileHandle();
-const {
-  fileContent,
-  originalContent,
-  permissionStatus,
-  isSaving,
-  readFile,
-  writeFile,
-  isModified,
-} = useFileIO();
-const {
-  isWatching,
-  hasExternalChanges,
-  startWatching,
-  stopWatching,
-  clearExternalChanges,
-  updateTrackedState,
-} = useFileWatcher();
+const { fileContent, permissionStatus, isSaving, readFile, writeFile } =
+  useFileIO();
+const { isWatching, startWatching, clearExternalChanges, updateTrackedState } =
+  useFileWatcher();
 
 // Parse markdown into structured TodoItems
 const parseResult = computed<ParseResult>(() => {
@@ -135,12 +122,10 @@ const saveFile = async () => {
 };
 
 // Auto-save setup
-const { isModified: autoSaveModified } = useAutoSave(fileContent, saveFile, {
+useAutoSave(fileContent, saveFile, {
   debounceMs: 1000,
   enabled: computed(() => !!fileHandle.value && hasValidFormat.value),
 });
-
-const isFileModified = computed(() => isModified());
 
 // Handle todo item events
 const handleToggle = (id: string) => {
