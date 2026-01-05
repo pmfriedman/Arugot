@@ -143,6 +143,31 @@ Start the scheduler:
 uv run python main.py schedule
 ```
 
+### Tool Customizations
+
+#### Obsidian
+
+- Location for attachments: /assets/images
+- Automatically Update Internal Links
+- Hotkey for strikethrough (ctrl-hyphen)
+- Hotkey for Move To A Different Folder (ctrl-shift-A)
+
+#### AutoHotKey
+
+```autohotkey
+#Requires AutoHotkey v2.0
+
+; Create meeting in vault.  Replace file paths to code and uv as needed
+^+m::Run A_ComSpec ' /c "cd /d C:\dev\Arugot && C:\Users\phili\.local\bin\uv.exe run python main.py new meeting"'
+
+; Markdown Checkbox
+^1::  ; Ctrl+1
+{
+    Send "{Home}"
+    Sleep 20
+    Send "- [ ] "
+}
+
 ---
 
 ## Primary Workflows
