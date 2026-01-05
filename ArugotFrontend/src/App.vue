@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted } from "vue";
+import InboxManager from "./modules/inbox/InboxManager.vue";
 import TodoManager from "./modules/todo/TodoManager.vue";
 import VaultTodoManager from "./modules/vaultTodo/VaultTodoManager.vue";
 import VaultDirectoryPicker from "./components/VaultDirectoryPicker.vue";
@@ -30,6 +31,9 @@ onMounted(async () => {
     </nav>
 
     <div class="panels">
+      <div class="panel">
+        <InboxManager />
+      </div>
       <div class="panel">
         <TodoManager />
       </div>
