@@ -12,6 +12,25 @@ param(
 $ProjectDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $ProjectDir
 
+# Start Vue dev server in a separate process
+$VueAppPath = Join-Path $ProjectDir "..\ArugotFrontend"
+if (Test-Path $VueAppPath) {
+    $ProcessStartInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $ProcessStartInfo.FileName = "cmd.exe"
+    $ProcessStartInfo.Arguments = "/c cd /d `"$VueAppPath`" && npm run dev"
+    $ProcessStartInfo.UseShellExecute = $false
+    $ProcessStartInfo.CreateNoWindow = $false
+    $ProcessStartInfo.WorkingDirectory = $VueAppPath
+    
+    $VueProcess = New-Object System.Diagnostics.Process
+    $VueProcess.StartInfo = $ProcessStartInfo
+    $VueProcess.Start() | Out-Null
+    
+    Write-Host "Started Vue dev server from: $VueAppPath"
+} else {
+    Write-Host "Warning: Vue app not found at: $VueAppPath"
+}
+
 # Set up logging
 $LogDir = Join-Path $ProjectDir "logs"
 if (-not (Test-Path $LogDir)) {
