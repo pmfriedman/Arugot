@@ -3,7 +3,7 @@ import { onMounted, ref } from "vue";
 import InboxManager from "./modules/inbox/InboxManager.vue";
 import TodoManager from "./modules/todo/TodoManager.vue";
 import VaultTodoManager from "./modules/vaultTodo/VaultTodoManager.vue";
-import LogsManager from "./modules/logs/LogsManager.vue";
+import LogsManager from "./modules/arugotLogs/LogsManager.vue";
 import VaultDirectoryPicker from "./components/VaultDirectoryPicker.vue";
 import { useVaultDirectory } from "./composables/useVaultDirectory";
 
