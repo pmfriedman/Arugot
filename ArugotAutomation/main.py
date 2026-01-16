@@ -204,7 +204,7 @@ meeting_date: {iso_timestamp}
 
 
 def open_inbox_in_vscode():
-    """Open the vault in VS Code and focus on the first inbox item."""
+    """Open the vault in VS Code and start an agent chat to process the first inbox item."""
     # Validate required settings
     if not settings.obsidian_vault_dir:
         print("Error: OBSIDIAN_VAULT_DIR not configured in .env")
@@ -234,9 +234,20 @@ def open_inbox_in_vscode():
     first_file = inbox_files[0]
     
     try:
-        # Open the vault folder and the specific file
+        # First open the vault folder with the file focused
         subprocess.run(f'code "{vault_root}" -g "{first_file}"', shell=True, check=True)
-        print(f"Opened in VS Code: {first_file}")
+        
+        # Then start an agent chat with the file as context and prompt to process it
+        # -m agent: use agent mode (default, but explicit for clarity)
+        # -a: add the inbox file as context
+        # -r: reuse the window we just opened
+        prompt = "Process this inbox file"
+        subprocess.run(
+            f'code chat "{prompt}" -a "{first_file}" -m agent -r',
+            shell=True,
+            check=True
+        )
+        print(f"Opened in VS Code with agent chat: {first_file}")
     except Exception as e:
         print(f"Failed to open VS Code: {e}")
         sys.exit(1)
