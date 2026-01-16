@@ -36,8 +36,9 @@ def main():
     subparsers.add_parser("list")
     subparsers.add_parser("schedule", help="Run the scheduler daemon")
 
-    new_parser = subparsers.add_parser("new", help="Create new notes")
-    new_parser.add_argument("note_type", choices=["meeting"], help="Type of note to create")
+    # Quick commands
+    subparsers.add_parser("new-meeting", help="Create a new meeting note and open in Obsidian")
+    subparsers.add_parser("open-inbox", help="Open vault in VS Code focused on first inbox item")
 
     args = parser.parse_args()
 
@@ -49,8 +50,12 @@ def main():
         run_scheduler()
         return
     
-    if args.command == "new":
-        create_new_note(args.note_type)
+    if args.command == "new-meeting":
+        create_new_meeting()
+        return
+    
+    if args.command == "open-inbox":
+        open_inbox_in_vscode()
         return
 
     context = build_context_from_cli(args)
@@ -146,16 +151,8 @@ def build_context_from_cli(args) -> RunContext:
     )
 
 
-def create_new_note(note_type: str):
-    """Create a new note and open it in Obsidian.
-    
-    Args:
-        note_type: Type of note to create (currently only "meeting" supported)
-    """
-    if note_type != "meeting":
-        print(f"Unsupported note type: {note_type}")
-        sys.exit(1)
-    
+def create_new_meeting():
+    """Create a new meeting note and open it in Obsidian."""
     # Validate required settings
     if not settings.obsidian_vault_dir:
         print("Error: OBSIDIAN_VAULT_DIR not configured in .env")
@@ -203,6 +200,45 @@ meeting_date: {iso_timestamp}
     except Exception as e:
         print(f"Failed to open in Obsidian: {e}")
         print(f"URI: {obsidian_uri}")
+        sys.exit(1)
+
+
+def open_inbox_in_vscode():
+    """Open the vault in VS Code and focus on the first inbox item."""
+    # Validate required settings
+    if not settings.obsidian_vault_dir:
+        print("Error: OBSIDIAN_VAULT_DIR not configured in .env")
+        sys.exit(1)
+    
+    vault_root = Path(settings.obsidian_vault_dir)
+    inbox_dir = vault_root / "_inbox"
+    
+    if not inbox_dir.exists():
+        print(f"Inbox directory does not exist: {inbox_dir}")
+        sys.exit(1)
+    
+    # Find the first markdown file in inbox (sorted alphabetically)
+    inbox_files = sorted(inbox_dir.glob("*.md"))
+    
+    if not inbox_files:
+        print("Inbox is empty!")
+        # Still open the vault in VS Code
+        try:
+            subprocess.run(f'code "{vault_root}"', shell=True, check=True)
+            print(f"Opened vault in VS Code: {vault_root}")
+        except Exception as e:
+            print(f"Failed to open VS Code: {e}")
+            sys.exit(1)
+        return
+    
+    first_file = inbox_files[0]
+    
+    try:
+        # Open the vault folder and the specific file
+        subprocess.run(f'code "{vault_root}" -g "{first_file}"', shell=True, check=True)
+        print(f"Opened in VS Code: {first_file}")
+    except Exception as e:
+        print(f"Failed to open VS Code: {e}")
         sys.exit(1)
 
 

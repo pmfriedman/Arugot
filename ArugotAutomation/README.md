@@ -159,7 +159,10 @@ uv run python main.py schedule
 #Requires AutoHotkey v2.0
 
 ; Create meeting in vault.  Replace file paths to code and uv as needed
-^+m::Run A_ComSpec ' /c "cd /d C:\dev\Arugot && C:\Users\phili\.local\bin\uv.exe run python main.py new meeting"'
+^+m::Run A_ComSpec ' /c "cd /d C:\dev\Arugot && C:\Users\phili\.local\bin\uv.exe run python main.py new-meeting"'
+
+; Open inbox in VS Code
+^+i::Run A_ComSpec ' /c "cd /d C:\dev\Arugot && C:\Users\phili\.local\bin\uv.exe run python main.py open-inbox"'
 
 ; Markdown Checkbox
 ^1::  ; Ctrl+1
