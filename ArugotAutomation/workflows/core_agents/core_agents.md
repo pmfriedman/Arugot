@@ -1,7 +1,7 @@
 # Core Agents Workflow
 
 ## Purpose
-Maintains the core **Inbox Agent** and helps create specialized agents for processing different types of inbox items. This workflow generates agent definition files (`.agent.md`) but focuses on flexibility rather than prescribing specific structure.
+Maintains the core **Inbox Agent** and **Skills** for processing different types of inbox items. This workflow generates agent definition files (`.agent.md`) and skill files (`SKILL.md`) but focuses on flexibility rather than prescribing specific structure.
 
 ## Context
 The Arugot framework follows an Inbox pattern where work flows through `_inbox/` → process → `_archive/`. Custom agents provide interactive assistance while keeping the user in control.
@@ -11,6 +11,17 @@ The Arugot framework follows an Inbox pattern where work flows through `_inbox/`
 **Start minimal, evolve organically.** The core_agents workflow maintains a single core agent:
 
 **`Inbox`** - The universal entry point for all inbox processing that adapts to different areas by loading area-specific instructions.
+
+And a growing set of skills:
+
+**`example`** - A template skill demonstrating the skills standard.
+
+## Skills
+
+Skills are reusable instruction sets that can be referenced by agents or invoked directly. Unlike agents, skills don't have conversational personas—they provide specific capabilities or procedures.
+
+- Skills are stored in `.github/skills/{skill_id}/SKILL.md` in the vault
+- Skills can be referenced from agent instructions
 
 ## Core Agent
 
@@ -51,9 +62,9 @@ Don't dictate "these are the types of inbox items." Let users discover their own
 Agents suggest but don't enforce vault organization beyond `_inbox/` and `_archive/`.
 
 ## Workflow Implementation
-** from `workflows/core_agents/agents/inbox.agent.md`
-2. **Compares checksum** with file in vault's `.github/agents/`
-3. **Updates vault file** if checksum differs (or file doesn't exist)
+- **Loads templates** from `workflows/core_agents/agents/` and `workflows/core_agents/skills/`
+- **Compares checksum** with files in vault's `.github/agents/` and `.github/skills/`
+- **Updates vault files** if checksums differ (or files don't exist)
 
 No state tracking needed - the workflow is stateless and compares source template with destination file
 3. **Updates vault files** if checksums differ (or file doesn't exist)
