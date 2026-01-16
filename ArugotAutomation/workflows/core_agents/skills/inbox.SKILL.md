@@ -54,6 +54,13 @@ When processing an inbox item, follow this workflow:
   - Make updates to Area content as needed
   - Work interactively with the user to refine those updates
 
+### Step 6: Archive the Inbox Item
+
+- **Confirm integration is complete** - Ensure all relevant content has been processed and integrated
+- **Ask for user approval** - Explicitly ask the user if they're ready to archive this inbox item
+- **Wait for confirmation** - Do not archive until the user explicitly approves
+- **Use the vault_archive_file tool** - Once approved, call `vault_archive_file` with the inbox item's filename to move it from `_inbox/` to `_archive/`
+
 ## Important Guidelines
 
 - **Understand the Area**: Read and understand the Area's purpose before proposing updates

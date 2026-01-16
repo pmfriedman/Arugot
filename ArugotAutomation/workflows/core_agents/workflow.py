@@ -1,11 +1,12 @@
 """
 Core Agents Workflow
 
-Maintains core custom GitHub Copilot agents and skills.
-Generates and updates .agent.md files in .github/agents/
-and .SKILL.md files in .github/skills/.
+Maintains core custom GitHub Copilot agents, skills, and MCP servers.
+Generates and updates .agent.md files in .github/agents/,
+.SKILL.md files in .github/skills/, and .vscode/mcp.json.
 """
 
+import json
 import logging
 from pathlib import Path
 from typing import Dict, Any
@@ -16,13 +17,25 @@ from settings import settings
 
 logger = logging.getLogger(__name__)
 
-DESCRIPTION = "Maintains core custom GitHub Copilot agents and skills."
+DESCRIPTION = "Maintains core custom GitHub Copilot agents, skills, and MCP servers."
 
 # Core agents maintained by this workflow
 CORE_AGENTS = ["inbox"]
 
 # Core skills maintained by this workflow
 CORE_SKILLS = ["inbox"]
+
+# Get the ArugotAutomation root directory dynamically
+AUTOMATION_ROOT = Path(__file__).parent.parent.parent
+
+# Core MCP servers maintained by this workflow
+CORE_MCPS = {
+    "arugot-vault": {
+        "command": "uv",
+        "args": ["run", "python", "-m", "mcp_server.server"],
+        "cwd": str(AUTOMATION_ROOT),
+    }
+}
 
 
 def calculate_checksum(content: str) -> str:
@@ -173,6 +186,37 @@ async def run(context: RunContext, state: Dict[str, Any]) -> Dict[str, Any]:
                 vault_file.parent.mkdir(parents=True, exist_ok=True)
                 vault_file.write_text(template_content, encoding="utf-8")
                 logger.info(f"  ✓ Wrote: {vault_file}")
+    
+    # Process MCP configuration
+    logger.info("Processing MCP configuration")
+    
+    mcp_config = {"servers": CORE_MCPS}
+    mcp_content = json.dumps(mcp_config, indent=2)
+    mcp_checksum = calculate_checksum(mcp_content)
+    
+    vault_mcp_file = vault_root / ".vscode" / "mcp.json"
+    needs_update = True
+    
+    if vault_mcp_file.exists():
+        vault_mcp_content = vault_mcp_file.read_text(encoding="utf-8")
+        vault_mcp_checksum = calculate_checksum(vault_mcp_content)
+        
+        if vault_mcp_checksum == mcp_checksum:
+            logger.info("  ✓ MCP configuration is up to date")
+            needs_update = False
+        else:
+            logger.info("  ! MCP configuration has changed (checksum mismatch)")
+    else:
+        logger.info("  + MCP configuration does not exist in vault")
+    
+    if needs_update:
+        if context.dry_run:
+            logger.info(f"  [DRY RUN] Would write: {vault_mcp_file}")
+            logger.debug(f"Content:\n{mcp_content}")
+        else:
+            vault_mcp_file.parent.mkdir(parents=True, exist_ok=True)
+            vault_mcp_file.write_text(mcp_content, encoding="utf-8")
+            logger.info(f"  ✓ Wrote: {vault_mcp_file}")
     
     logger.info("Core agents workflow complete")
     return state
