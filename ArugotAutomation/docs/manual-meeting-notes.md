@@ -52,7 +52,7 @@ Find your `uv.exe` path with: `Get-Command uv | Select-Object -ExpandProperty So
 
 Then add to your AutoHotkey v2 script:
 ```ahk
-^+m::Run A_ComSpec ' /c "cd /d C:\dev\Arugot && C:\Users\YourUsername\.local\bin\uv.exe run python main.py new meeting"'
+^+m::Run A_ComSpec ' /c "cd /d C:\dev\Arugot && C:\Users\YourUsername\.local\bin\uv.exe run python main.py new-meeting"'
 ```
 
 Press `Ctrl+Shift+M` → meeting note created and opened in Obsidian instantly.
