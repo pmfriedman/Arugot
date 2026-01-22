@@ -20,10 +20,10 @@ logger = logging.getLogger(__name__)
 DESCRIPTION = "Maintains core custom GitHub Copilot agents, skills, and MCP servers."
 
 # Core agents maintained by this workflow
-CORE_AGENTS = ["inbox"]
+CORE_AGENTS = []
 
 # Core skills maintained by this workflow
-CORE_SKILLS = ["inbox"]
+CORE_SKILLS = ["inbox-processing"]
 
 # Get the ArugotAutomation root directory dynamically
 AUTOMATION_ROOT = Path(__file__).parent.parent.parent

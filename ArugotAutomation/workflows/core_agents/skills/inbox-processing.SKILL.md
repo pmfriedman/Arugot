@@ -1,5 +1,5 @@
 ---
-name: Inbox-Processing
+name: inbox-processing
 description: Process files from the _inbox folder and synthesize them into the vault
 ---
 
@@ -25,6 +25,13 @@ When processing an inbox item, follow this workflow:
 - **Check backlinks** - Find and read documents that link to this inbox item
 - **Use workspace search as backup** - If needed context isn't linked, search for relevant documents
 - Build a complete picture of what this inbox item is about
+
+### Step 1.1: Special Handling for Github PRs
+
+If the inbox item is a Pull Request Note, then do the following:
+- Use the references in the note to determine what changed that needs the user's attention
+- Summarize the key changes concisely
+- Skip to step 6 (archiving)
 
 ### Step 2: Classify the Area
 
