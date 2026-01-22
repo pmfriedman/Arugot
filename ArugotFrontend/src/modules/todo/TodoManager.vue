@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, nextTick } from "vue";
 import { useVaultDirectory } from "../../composables/useVaultDirectory";
 import { useAutoSave } from "./composables/useAutoSave";
 import { useFileWatcher } from "./composables/useFileWatcher";
@@ -18,6 +18,10 @@ const parseError = ref<string>("");
 const fileContent = ref<string>("");
 const isSaving = ref<boolean>(false);
 const fileExists = ref<boolean>(false);
+
+// Track content origin to prevent save loops when loading external changes
+const isLoadingExternal = ref<boolean>(false);
+const lastSavedContent = ref<string>("");
 
 // Check if File System Access API is supported
 const isSupported = "showDirectoryPicker" in window;
@@ -62,7 +66,14 @@ const loadFile = async () => {
     }
 
     fileExists.value = true;
+
+    // Mark as loading external to prevent auto-save from triggering
+    isLoadingExternal.value = true;
     fileContent.value = content;
+    lastSavedContent.value = content;
+    // Reset flag after Vue's reactivity cycle completes
+    await nextTick();
+    isLoadingExternal.value = false;
 
     // Start watching for external changes with auto-reload
     const fileHandle = await vaultDirectory.value.getFileHandle(
@@ -82,10 +93,27 @@ const loadFile = async () => {
 };
 
 const handleAutoReload = async () => {
+  // Don't reload while we're in the middle of saving
+  if (isSaving.value) {
+    console.log("Skipping auto-reload - save in progress");
+    return;
+  }
+
   try {
     const content = await readFile(GLOBAL_TODO_FILE);
     if (content !== null) {
+      // Only reload if content actually differs from what we have
+      // This prevents unnecessary reactivity cycles
+      if (content === fileContent.value) {
+        console.log("External file unchanged, skipping reload");
+        clearExternalChanges();
+        return;
+      }
+
+      // Mark as loading external to prevent auto-save from triggering
+      isLoadingExternal.value = true;
       fileContent.value = content;
+      lastSavedContent.value = content;
       clearExternalChanges();
 
       // Update tracked state after reload
@@ -96,14 +124,25 @@ const handleAutoReload = async () => {
       if (fileHandle) {
         await updateTrackedState(fileHandle);
       }
+
+      // Reset flag after Vue's reactivity cycle completes
+      await nextTick();
+      isLoadingExternal.value = false;
     }
   } catch (err: any) {
+    isLoadingExternal.value = false;
     error.value = `Error auto-reloading file: ${err.message}`;
   }
 };
 
 const saveFile = async () => {
   if (!vaultDirectory.value || !fileExists.value) return;
+
+  // Skip save if content matches what's already on disk
+  if (fileContent.value === lastSavedContent.value) {
+    console.log("Content unchanged, skipping save");
+    return;
+  }
 
   try {
     error.value = "";
@@ -114,6 +153,9 @@ const saveFile = async () => {
       error.value = `Error saving "${GLOBAL_TODO_FILE}"`;
       return;
     }
+
+    // Track what we just saved
+    lastSavedContent.value = fileContent.value;
 
     // Update tracked state after save to prevent false positive detection
     const fileHandle = await vaultDirectory.value.getFileHandle(
@@ -130,11 +172,15 @@ const saveFile = async () => {
   }
 };
 
-// Auto-save setup
+// Auto-save setup - disabled when loading external changes to prevent race conditions
 useAutoSave(fileContent, saveFile, {
   debounceMs: 1000,
   enabled: computed(
-    () => !!vaultDirectory.value && fileExists.value && hasValidFormat.value
+    () =>
+      !!vaultDirectory.value &&
+      fileExists.value &&
+      hasValidFormat.value &&
+      !isLoadingExternal.value
   ),
 });
 
