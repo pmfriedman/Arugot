@@ -161,6 +161,44 @@ export function useVaultDirectory() {
     }
   }
 
+  /**
+   * Get a fresh directory handle by re-resolving from the stored handle.
+   * This helps ensure we see newly created files/folders that may not
+   * appear when iterating a stale cached handle.
+   */
+  async function getFreshDirectoryHandle(): Promise<FileSystemDirectoryHandle | null> {
+    if (!vaultDirectory.value) return null;
+
+    try {
+      // Re-query permission to ensure the handle is still valid
+      const permission = await (vaultDirectory.value as any).queryPermission({
+        mode: "readwrite",
+      });
+      if (permission !== "granted") {
+        const requestPermission = await (vaultDirectory.value as any).requestPermission({
+          mode: "readwrite",
+        });
+        if (requestPermission !== "granted") {
+          return null;
+        }
+      }
+      
+      // Force a fresh filesystem read by creating and removing a temp file
+      // This is a workaround for stale directory handle caching in some browsers
+      const tempFileName = `.arugot-refresh-${Date.now()}`;
+      try {
+        const tempFile = await vaultDirectory.value.getFileHandle(tempFileName, { create: true });
+        await vaultDirectory.value.removeEntry(tempFileName);
+      } catch {
+        // Ignore errors - this is just to trigger a refresh
+      }
+      
+      return vaultDirectory.value;
+    } catch {
+      return null;
+    }
+  }
+
   return {
     vaultDirectory,
     isLoading,
@@ -169,5 +207,6 @@ export function useVaultDirectory() {
     getFileHandle,
     readFile,
     writeFile,
+    getFreshDirectoryHandle,
   };
 }

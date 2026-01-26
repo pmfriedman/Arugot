@@ -81,7 +81,7 @@ interface VaultTask {
 // Set to false to revert to basic file opening (no line numbers)
 const USE_ADVANCED_URI = true;
 
-const { vaultDirectory } = useVaultDirectory();
+const { vaultDirectory, getFreshDirectoryHandle } = useVaultDirectory();
 const tasks = ref<VaultTask[]>([]);
 const isScanning = ref(false);
 
@@ -136,7 +136,14 @@ async function scanVault() {
     isScanning.value = true;
     tasks.value = [];
 
-    await scanDirectory(vaultDirectory.value, "");
+    // Get a fresh handle to ensure we see newly created files/folders
+    const freshHandle = await getFreshDirectoryHandle();
+    if (!freshHandle) {
+      console.error("Failed to get fresh directory handle");
+      return;
+    }
+
+    await scanDirectory(freshHandle, "");
   } catch (err: any) {
     console.error("Scan failed:", err);
   } finally {
