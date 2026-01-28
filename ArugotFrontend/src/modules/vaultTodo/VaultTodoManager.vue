@@ -17,7 +17,7 @@
 
     <div v-else-if="tasks.length > 0" class="tasks-list">
       <p class="tasks-count">
-        Found {{ tasks.length }} tasks in
+        Found {{ tasks.filter(t => !t.completed).length }} tasks in
         {{ Object.keys(groupedTasks).length }} files
       </p>
 
