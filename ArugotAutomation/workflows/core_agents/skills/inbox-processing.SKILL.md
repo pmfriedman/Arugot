@@ -23,6 +23,7 @@ When processing an inbox item, follow this workflow:
 - **Read the inbox document fully** - understand all content, metadata, and context
 - **Follow Obsidian links** - Read any documents linked within the inbox item (using `[[wikilinks]]`)
 - **Check backlinks** - Find and read documents that link to this inbox item
+- **Check for related inbox items** - Look for other inbox items that reference the same meeting, topic, PR, etc.
 - **Use workspace search as backup** - If needed context isn't linked, search for relevant documents
 - Build a complete picture of what this inbox item is about
 
