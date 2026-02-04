@@ -12,7 +12,7 @@ This skill provides instructions for processing inbox items within an Obsidian v
 - **Inbox items**: Active items awaiting processing are in `_inbox/` folder
 - **Areas**: Predefined categories defined in `/_meta/areas.md`
 - **Area folders**: Each Area has its own folder at `/areas/{area_name}/`
-- **Area context**: Purpose and organization documented in `/areas/{area_name}/overview.md`
+- **Area context**: Purpose and organization documented in `/areas/{area_name}/AGENTS.md`
 
 ## Processing Workflow
 
@@ -29,7 +29,8 @@ When processing an inbox item, follow this workflow:
 ### Step 1.1: Special Handling for Github PRs
 
 If the inbox item is a Pull Request Note, then do the following:
-- Use the references in the note to determine what changed that needs the user's attention
+- Find all inbox notes for this PR
+- Use the references in the note(s) to determine what changed that needs the user's attention
 - Summarize the key changes concisely
 - Skip to step 6 (archiving)
 
@@ -48,9 +49,9 @@ If the inbox item is a Pull Request Note, then do the following:
 
 ### Step 4: Understand the Area Context
 
-- **Read the Area overview** from `/areas/{area_name}/overview.md` where `{area_name}` is the confirmed classification
+- **Read the Area instructions** from `/areas/{area_name}/AGENTS.md` where `{area_name}` is the confirmed classification
 - Understand the Area's purpose, what content it maintains, and how it's organized
-- If the Area overview file doesn't exist, note that this Area hasn't been set up yet
+- If the Area AGENTS.md file doesn't exist, note that this Area hasn't been set up yet
 
 ### Step 5: Integrate the Inbox Item
 
@@ -72,13 +73,13 @@ If the inbox item is a Pull Request Note, then do the following:
 
 - **Understand the Area**: Read and understand the Area's purpose before proposing updates
 - **Think integration**: Focus on how the inbox item updates or relates to existing Area content
-- **Let the overview guide detail level**: Use the Area's overview to determine what level of detail to preserve and which information is important for that Area
+- **Let the AGENTS.md guide detail level**: Use the Area's AGENTS.md to determine what level of detail to preserve and which information is important for that Area
 - **Be adaptive**: When no Area context exists, work with the user to establish it
 - **Stay interactive**: This is a collaborative process - confirm actions before taking them
 
 ## Output Style
 
-- **Follow explicit style guidance**: If the Area's overview specifies formatting or style, follow it
+- **Follow explicit style guidance**: If the Area's AGENTS.md specifies formatting or style, follow it
 - **Observe implicit style patterns**: If no explicit guidance exists, match the style and organization of existing Area content
 
 ## Goal
