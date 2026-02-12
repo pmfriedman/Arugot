@@ -23,7 +23,7 @@ DESCRIPTION = "Maintains core custom GitHub Copilot agents, skills, and MCP serv
 CORE_AGENTS = []
 
 # Core skills maintained by this workflow
-CORE_SKILLS = ["inbox-processing"]
+CORE_SKILLS = ["inbox-processing", "gardener"]
 
 # Get the ArugotAutomation root directory dynamically
 AUTOMATION_ROOT = Path(__file__).parent.parent.parent
@@ -53,14 +53,27 @@ def load_agent_template(agent_id: str) -> str:
     return template_path.read_text(encoding="utf-8")
 
 
-def load_skill_template(skill_id: str) -> str:
-    """Load skill template from the skills/ subdirectory."""
-    template_path = Path(__file__).parent / "skills" / f"{skill_id}.SKILL.md"
+def get_skill_source_dir(skill_id: str) -> Path:
+    """Get the source directory for a skill."""
+    skill_dir = Path(__file__).parent / "skills" / skill_id
     
-    if not template_path.exists():
-        raise FileNotFoundError(f"Skill template not found: {template_path}")
+    if not skill_dir.is_dir():
+        raise FileNotFoundError(f"Skill directory not found: {skill_dir}")
     
-    return template_path.read_text(encoding="utf-8")
+    skill_md = skill_dir / "SKILL.md"
+    if not skill_md.exists():
+        raise FileNotFoundError(f"SKILL.md not found in: {skill_dir}")
+    
+    return skill_dir
+
+
+def get_skill_files(skill_dir: Path) -> list[Path]:
+    """List all files in a skill directory (recursively), relative to skill_dir."""
+    return sorted(
+        p.relative_to(skill_dir)
+        for p in skill_dir.rglob("*")
+        if p.is_file() and p.name != "__pycache__" and "__pycache__" not in p.parts
+    )
 
 
 async def run(context: RunContext, state: Dict[str, Any]) -> Dict[str, Any]:
@@ -148,44 +161,49 @@ async def run(context: RunContext, state: Dict[str, Any]) -> Dict[str, Any]:
                 vault_file.write_text(template_content, encoding="utf-8")
                 logger.info(f"  ✓ Wrote: {vault_file}")
     
-    # Process each skill
+    # Process each skill (syncs entire skill directory including references, scripts, assets)
     for skill_id in skills_to_process:
         logger.info(f"Processing skill: {skill_id}")
         
-        # Load template from workflow directory
+        # Locate skill source directory
         try:
-            template_content = load_skill_template(skill_id)
+            skill_source_dir = get_skill_source_dir(skill_id)
         except FileNotFoundError as e:
-            logger.error(f"  Failed to load template: {e}")
+            logger.error(f"  Failed to locate skill: {e}")
             continue
         
-        template_checksum = calculate_checksum(template_content)
+        # Get all files in the skill directory
+        skill_files = get_skill_files(skill_source_dir)
+        vault_skill_dir = vault_skills_dir / skill_id
         
-        # Check if vault file exists and compare checksums
-        vault_file = vault_skills_dir / skill_id / "SKILL.md"
-        needs_update = True
-        
-        if vault_file.exists():
-            vault_content = vault_file.read_text(encoding="utf-8")
-            vault_checksum = calculate_checksum(vault_content)
+        for rel_path in skill_files:
+            source_file = skill_source_dir / rel_path
+            vault_file = vault_skill_dir / rel_path
             
-            if vault_checksum == template_checksum:
-                logger.info(f"  ✓ Skill '{skill_id}' is up to date")
-                needs_update = False
+            source_content = source_file.read_text(encoding="utf-8")
+            source_checksum = calculate_checksum(source_content)
+            
+            needs_update = True
+            
+            if vault_file.exists():
+                vault_content = vault_file.read_text(encoding="utf-8")
+                vault_checksum = calculate_checksum(vault_content)
+                
+                if vault_checksum == source_checksum:
+                    logger.info(f"  ✓ {skill_id}/{rel_path} is up to date")
+                    needs_update = False
+                else:
+                    logger.info(f"  ! {skill_id}/{rel_path} has changed (checksum mismatch)")
             else:
-                logger.info(f"  ! Skill '{skill_id}' has changed (checksum mismatch)")
-        else:
-            logger.info(f"  + Skill '{skill_id}' does not exist in vault")
-        
-        # Update if needed
-        if needs_update:
-            if context.dry_run:
-                logger.info(f"  [DRY RUN] Would write: {vault_file}")
-                logger.debug(f"Content preview:\n{template_content[:200]}...")
-            else:
-                vault_file.parent.mkdir(parents=True, exist_ok=True)
-                vault_file.write_text(template_content, encoding="utf-8")
-                logger.info(f"  ✓ Wrote: {vault_file}")
+                logger.info(f"  + {skill_id}/{rel_path} does not exist in vault")
+            
+            if needs_update:
+                if context.dry_run:
+                    logger.info(f"  [DRY RUN] Would write: {vault_file}")
+                else:
+                    vault_file.parent.mkdir(parents=True, exist_ok=True)
+                    vault_file.write_text(source_content, encoding="utf-8")
+                    logger.info(f"  ✓ Wrote: {vault_file}")
     
     # Process MCP configuration
     logger.info("Processing MCP configuration")
