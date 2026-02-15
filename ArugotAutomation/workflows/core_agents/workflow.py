@@ -22,8 +22,14 @@ DESCRIPTION = "Maintains core custom GitHub Copilot agents, skills, and MCP serv
 # Core agents maintained by this workflow
 CORE_AGENTS = []
 
-# Core skills maintained by this workflow
-CORE_SKILLS = ["inbox-processing", "gardener", "friction-capture"]
+# Skill targets:
+#   "vault"  -> {vault_root}/.github/skills/{skill_id}/
+#   "global" -> ~/.copilot/skills/{skill_id}/
+CORE_SKILLS: dict[str, str] = {
+    "inbox-processing": "vault",
+    "gardener": "global",
+    "friction-capture": "global",
+}
 
 # Get the ArugotAutomation root directory dynamically
 AUTOMATION_ROOT = Path(__file__).parent.parent.parent
@@ -105,6 +111,7 @@ async def run(context: RunContext, state: Dict[str, Any]) -> Dict[str, Any]:
 
     vault_agents_dir = vault_root / ".github" / "agents"
     vault_skills_dir = vault_root / ".github" / "skills"
+    global_skills_dir = Path.home() / ".copilot" / "skills"
 
     # Determine which agents to process
     agents_to_process = CORE_AGENTS if not specific_agent else [specific_agent]
@@ -115,11 +122,13 @@ async def run(context: RunContext, state: Dict[str, Any]) -> Dict[str, Any]:
         return state
 
     # Determine which skills to process
-    skills_to_process = CORE_SKILLS if not specific_skill else [specific_skill]
+    skills_to_process = (
+        list(CORE_SKILLS.keys()) if not specific_skill else [specific_skill]
+    )
 
     if specific_skill and specific_skill not in CORE_SKILLS:
         logger.error(f"Unknown skill: {specific_skill}")
-        logger.info(f"Available skills: {', '.join(CORE_SKILLS)}")
+        logger.info(f"Available skills: {', '.join(CORE_SKILLS.keys())}")
         return state
 
     # Process each agent
@@ -174,22 +183,30 @@ async def run(context: RunContext, state: Dict[str, Any]) -> Dict[str, Any]:
 
         # Get all files in the skill directory
         skill_files = get_skill_files(skill_source_dir)
-        vault_skill_dir = vault_skills_dir / skill_id
+
+        # Route to vault or global based on skill target
+        skill_target = CORE_SKILLS.get(skill_id, "vault")
+        if skill_target == "global":
+            target_skill_dir = global_skills_dir / skill_id
+            logger.info(f"  Target: ~/.copilot/skills/{skill_id}/")
+        else:
+            target_skill_dir = vault_skills_dir / skill_id
+            logger.info(f"  Target: vault/.github/skills/{skill_id}/")
 
         for rel_path in skill_files:
             source_file = skill_source_dir / rel_path
-            vault_file = vault_skill_dir / rel_path
+            target_file = target_skill_dir / rel_path
 
             source_content = source_file.read_text(encoding="utf-8")
             source_checksum = calculate_checksum(source_content)
 
             needs_update = True
 
-            if vault_file.exists():
-                vault_content = vault_file.read_text(encoding="utf-8")
-                vault_checksum = calculate_checksum(vault_content)
+            if target_file.exists():
+                target_content = target_file.read_text(encoding="utf-8")
+                target_checksum = calculate_checksum(target_content)
 
-                if vault_checksum == source_checksum:
+                if target_checksum == source_checksum:
                     logger.info(f"  ✓ {skill_id}/{rel_path} is up to date")
                     needs_update = False
                 else:
@@ -197,15 +214,15 @@ async def run(context: RunContext, state: Dict[str, Any]) -> Dict[str, Any]:
                         f"  ! {skill_id}/{rel_path} has changed (checksum mismatch)"
                     )
             else:
-                logger.info(f"  + {skill_id}/{rel_path} does not exist in vault")
+                logger.info(f"  + {skill_id}/{rel_path} does not exist at target")
 
             if needs_update:
                 if context.dry_run:
-                    logger.info(f"  [DRY RUN] Would write: {vault_file}")
+                    logger.info(f"  [DRY RUN] Would write: {target_file}")
                 else:
-                    vault_file.parent.mkdir(parents=True, exist_ok=True)
-                    vault_file.write_text(source_content, encoding="utf-8")
-                    logger.info(f"  ✓ Wrote: {vault_file}")
+                    target_file.parent.mkdir(parents=True, exist_ok=True)
+                    target_file.write_text(source_content, encoding="utf-8")
+                    logger.info(f"  ✓ Wrote: {target_file}")
 
     # Process MCP configuration
     logger.info("Processing MCP configuration")
