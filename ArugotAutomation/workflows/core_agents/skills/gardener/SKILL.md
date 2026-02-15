@@ -9,6 +9,8 @@ description: Meta-practice that audits all practices for health and improvement.
 
 This practice is governed by the [Constitution](references/CONSTITUTION.md). It is itself subject to self-reflection and improvement.
 
+The structural definition of what a practice is — its required components, file layout, and discovery conventions — lives in the [Practice Spec](references/PRACTICE-SPEC.md). The Gardener audits against that spec but does not own it.
+
 ---
 
 ## Purpose
@@ -17,91 +19,19 @@ The Gardener does not do the work of improvement. It ensures the *conditions* fo
 
 ---
 
-## Key Definitions
-
-### Practice
-
-A **practice** is any repeatable process that serves how I work. It is durable and tool-agnostic — it describes the *what* and *why*, not the *how*.
-
-A practice is **not** a skill, a script, or any specific implementation. Those are artifacts that may live *inside* a practice and will change over time.
-
-Each practice must have:
-- **A definition** — what it does and why it exists. Currently, the implementation file (e.g., `SKILL.md`) serves this purpose. If the practice outgrows its implementation, a separate definition may earn its way in.
-- **A reflection mechanism** — a way to capture friction and feed it back (currently: `RETRO.md`)
-
-### Friction
-
-Any correction, workaround, repeated frustration, or deviation from expected behavior. Friction is data, not failure. It is the raw input to the self-reflection cycle.
-
----
-
-## Structure (v1)
-
-```
-.github/
-  skills/
-    gardener/
-      SKILL.md
-      RETRO.md
-      references/
-        CONSTITUTION.md
-
-    <practice-name>/
-      SKILL.md
-      RETRO.md
-```
-
-### Discovery (Convention-Based)
-
-The Gardener discovers practices by scanning the `.github/skills/` directory. Any subdirectory containing a `SKILL.md` is treated as a practice. No separate registry is maintained — the filesystem is the registry.
-
-The Gardener derives status from what it finds:
-- **Has definition?** — a `SKILL.md` exists
-- **Has reflection?** — a `RETRO.md` exists
-- **Last reflection date** — parsed from the most recent `RETRO.md` entry
-- **Status** — derived: active (recent retro), stale (no recent retro), incomplete (missing retro)
-
-If convention-based discovery starts creating friction (e.g., practices live in multiple locations, or the Gardener needs to track things it can't derive), an explicit registry may earn its way in.
-
-### Reflection Format (v1)
-
-The Gardener prescribes a standard reflection format for all practices. This is a **temporary implementation choice** made for coherence during the bootstrapping phase. As the ecosystem matures, practices may earn the right to own their own reflection format.
-
-Each `RETRO.md` should capture entries in this format:
-
-```
-## YYYY-MM-DD
-
-**Friction observed:** What happened — corrections, workarounds, surprises.
-
-**Signal:** What this suggests about the practice or its implementation.
-
-**Action:** What should change, or "none — monitoring."
-```
-
----
-
 ## What the Gardener Does
 
 ### Sense
-- Scan the practices directory for all practices
-- Check: does each one have a definition?
-- Check: does each one have a reflection mechanism?
-- Check: is that mechanism producing signal?
-- Watch for friction patterns that no existing practice captures
+
+1. **Find all practices** — using the discovery convention defined in the [Practice Spec](references/PRACTICE-SPEC.md)
+2. **For each practice, locate its self-reflection mechanism** — check the spec for the default, then check the practice's own docs for any self-declared alternative
+3. **If no mechanism exists, flag the practice** — a practice without self-reflection cannot improve
 
 ### Assess
-- Flag practices with no reflection mechanism
-- Flag reflection mechanisms that have gone silent (stale)
-- Flag repeated friction that is not being addressed
-- Flag areas of work that have no practice at all
-- Determine whether any thresholds have been crossed
 
-### Act
-- Spawn targeted improvement tasks for specific practices
-- Recommend creation of new practices where gaps exist
-- Recommend retirement of dead practices
-- Report findings for approval before making changes
+For practices that *do* have a self-reflection mechanism:
+- Is it producing signal? (Has it been used recently?)
+- Are there open actions that haven't been addressed?
 
 ---
 
