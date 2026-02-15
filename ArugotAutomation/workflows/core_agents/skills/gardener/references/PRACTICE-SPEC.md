@@ -10,7 +10,9 @@ This document is governed by the [Constitution](CONSTITUTION.md). Changes to thi
 
 ## What Is a Practice?
 
-A **practice** is any repeatable process that serves how I work. It is durable and tool-agnostic — it describes the *what* and *why*, not the *how*.
+A **practice** is any repeatable process that serves how I work. The *concept* of a practice is durable and tool-agnostic — it is not tied to any specific implementation or tooling.
+
+However, each practice's **definition document** should describe both the *what/why* and the *how*. The purpose grounds the practice; the operational detail makes it executable. Both are expected to evolve — the how more frequently than the why.
 
 A practice is **not** a skill, a script, or any specific implementation. Those are artifacts that may live *inside* a practice and will change over time.
 

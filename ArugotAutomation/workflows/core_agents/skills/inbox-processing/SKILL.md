@@ -5,7 +5,11 @@ description: Process files from the _inbox folder and synthesize them into the v
 
 # Inbox Processing Skill
 
-This skill provides instructions for processing inbox items within an Obsidian vault that follows the Inbox pattern.
+## Purpose
+
+Inbox items are raw material — meeting transcripts, PR notifications, notes, and other artifacts that arrive unstructured. Left unprocessed, they accumulate and lose context. This practice turns inbox items into integrated vault knowledge by classifying them into the right Area, understanding that Area's conventions, and synthesizing the content where it will actually be used.
+
+---
 
 ## Vault Structure
 
@@ -20,11 +24,11 @@ When processing an inbox item, follow this workflow:
 
 ### Step 1: Read and Understand
 
-- **Read the inbox document fully** - understand all content, metadata, and context
-- **Follow Obsidian links** - Read any documents linked within the inbox item (using `[[wikilinks]]`)
-- **Check backlinks** - Find and read documents that link to this inbox item
-- **Check for related inbox items** - Look for other inbox items that reference the same meeting, topic, PR, etc.
-- **Use workspace search as backup** - If needed context isn't linked, search for relevant documents
+- **Read the inbox document fully** — understand all content, metadata, and context
+- **Follow Obsidian links** — read any documents linked within the inbox item (using `[[wikilinks]]`)
+- **Check backlinks** — find and read documents that link to this inbox item
+- **Check for related inbox items** — look for other inbox items that reference the same meeting, topic, PR, etc. If multiple inbox items relate to the same topic or meeting, process them together as a batch (see Batch Processing below)
+- **Use workspace search as backup** — if needed context isn't linked, search for relevant documents
 - Build a complete picture of what this inbox item is about
 
 ### Step 1.1: Special Handling for Github PRs
@@ -78,11 +82,24 @@ If the inbox item is a Pull Request Note, then do the following:
 - **Be adaptive**: When no Area context exists, work with the user to establish it
 - **Stay interactive**: This is a collaborative process - confirm actions before taking them
 
+## Batch Processing
+
+When multiple inbox items relate to the same topic, meeting, or context:
+
+- **Identify the batch** during Step 1 — flag all related inbox items before proceeding
+- **Read the full batch** before classifying or integrating — the combined context often tells a richer story than any single item
+- **Integrate holistically** — synthesize the batch into a single coherent update to the Area, rather than processing each item in isolation
+- **Archive the full batch** — once integration is confirmed, archive all items in the batch together
+
+## Friction Awareness
+
+During processing, stay alert for friction signals — corrections, dissatisfaction with output quality, repeated adjustments, or the user saying something "isn't quite right." These are data:
+
+- **Area-specific friction** (e.g., how content was written into an Area) should be routed to that Area's `RETRO.md`
+- **Process-level friction** (e.g., classification was wrong, workflow steps were confusing) belongs in this practice's own `RETRO.md`
+- When in doubt, the user can say `retro:` followed by their observation and it will be captured automatically
+
 ## Output Style
 
 - **Follow explicit style guidance**: If the Area's AGENTS.md specifies formatting or style, follow it
 - **Observe implicit style patterns**: If no explicit guidance exists, match the style and organization of existing Area content
-
-## Goal
-
-Help efficiently process inbox items by classifying them into Areas, understanding Area context, and proposing appropriate updates to integrate the inbox content into the vault structure.
